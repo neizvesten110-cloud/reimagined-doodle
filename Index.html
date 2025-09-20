@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Тараканчик</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            /* Убирает синее выделение при тапе на мобильных */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            /* Красиый градиентный фон */
+            color: white;
+            height: 100vh;
+            /* На весь экран */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            text-align: center;
+            overflow: hidden;
+            /* Чтобы ничего не вылезало за экран */
+            touch-action: manipulation;
+            /* Отключает масштабирование на тачскринах */
+        }
+
+        .header {
+            padding: 10px;
+        }
+
+        .score-container {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #score {
+            font-weight: bold;
+            font-size: 32px;
+        }
+
+        .timer-container {
+            font-size: 20px;
+        }
+
+        #timer {
+            font-weight: bold;
+        }
+
+        .game-area {
+            flex-grow: 1;
+            /* Занимает все оставшееся место */
+            position: relative;
+            width: 100%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        #target {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            background-color: #ff4757;
+            /* Красный кружок */
+            border-radius: 50%;
+            /* Делаем его круглым */
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            /* Центрируем по координатам */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            /* Тень для объема */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            /* Чтобы текст внутри не выделялся */
+        }
+
+        #start-btn {
+            background-color: #2ed573;
+            /* Зеленая кнопка */
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 15px 0;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #start-btn:active {
+            transform: scale(0.98);
+            /* Эффект нажатия */
+        }
+
+        .instructions {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="score-container">Счет: <span id="score">0</span></div>
+        <div class="timer-container">Время: <span id="timer">30</span> сек.</div>
+    </div>
+
+    <div class="game-area" id="gameArea">
+        <!-- Сюда JS будет помещать цель -->
+        <div id="target"></div>
+    </div>
+
+    <div>
+        <button id="start-btn">НАЧАТЬ ИГРУ</button>
+        <p class="instructions">Жми на кружок, как можно быстрее!</p>
+    </div>
+
+    <script>
+        // === НАСТРОЙКИ ИГРЫ ===
+        const gameDuration = 30; // Длительность игры в секундах
+        let score = 0; // Текущий счет
+        let timeLeft = gameDuration; // Оставшееся время
+        let gameInterval; // Интервал для таймера
+        let targetInterval; // Интервал для появления целей
+        let isGameActive = false; // Активна ли игра сейчас
+
+        // Получаем элементы со страницы по их ID
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const targetElement = document.getElementById('target');
+        const startButton = document.getElementById('start-btn');
+        const gameArea = document.getElementById('gameArea');
+
+        // === ФУНКЦИЯ СЛУЧАЙНОЙ ПОЗИЦИИ ===
+        // Генерирует случайные координаты в пределах игровой области
+        function getRandomPosition() {
+            // Получаем размеры игровой области
+            const gameRect = gameArea.getBoundingClientRect();
+            // Вычитаем размеры самой цели, чтобы она не выходила за границы
+            const maxX = gameRect.width - targetElement.offsetWidth;
+            const maxY = gameRect.height - targetElement.offsetHeight;
+            // Возвращаем случайные координаты
+            return {
+                x: Math.floor(Math.random() * maxX),
+                y: Math.floor(Math.random() * maxY)
+            };
+        }
+
+        // === ФУНКЦИЯ ПЕРЕМЕЩЕНИЯ ЦЕЛИ ===
+        function moveTarget() {
+            const newPos = getRandomPosition(); // Получаем новую позицию
+            // Устанавливаем новые координаты для цели
+            targetElement.style.left = newPos.x + 'px';
+            targetElement.style.top = newPos.y + 'px';
+        }
+
+        // === ФУНКЦИЯ ОБНОВЛЕНИЯ ТАЙМЕРА ===
+        function updateTimer() {
+            timeLeft--; // Уменьшаем оставшееся время на 1 секунду
+            timerElement.textContent = timeLeft; // Обновляем текст на экране
+
+            // Если время вышло
+            if (timeLeft <= 0) {
+                endGame(); // Завершаем игру
+            }
+        }
+
+        // === ФУНКЦИЯ НАЧАЛА ИГРЫ ===
+        function startGame() {
+            if (isGameActive) return; // Если игра уже идет, ничего не делаем
+
+            isGameActive = true; // Устанавливаем флаг активной игры
+            score = 0; // Сбрасываем счет
+            timeLeft = gameDuration; // Сбрасываем таймер
+            scoreElement.textContent = score; // Обновляем счет на экране
+            timerElement.textContent = timeLeft; // Обновляем таймер на экране
+            startButton.textContent = "ИДЕТ ИГРА..."; // Меняем текст кнопки
+            startButton.disabled = true; // Делаем кнопку неактивной
+            startButton.style.backgroundColor = "#7bed9f"; // Меняем цвет кнопки
+
+            // Запускаем таймер: функция updateTimer будет вызываться каждую секунду (1000 мс)
+            gameInterval = setInterval(updateTimer, 1000);
+            // Запускаем перемещение цели: функция moveTarget будет вызываться каждые 800 мс
+            targetInterval = setInterval(moveTarget, 800);
+
+            // Сразу перемещаем цель в случайную позицию
+            moveTarget();
+            // Показываем цель (на всякий случай)
+            targetElement.style.display = 'flex';
+        }
+
+        // === ФУНКЦИЯ ЗАВЕРШЕНИЯ ИГРЫ ===
+        function endGame() {
+            isGameActive = false; // Сбрасываем флаг активной игры
+
+            // Останавливаем все интервалы
+            clearInterval(gameInterval);
+            clearInterval(targetInterval);
+
+            // Восстанавливаем кнопку старта
+            startButton.textContent = "ИГРАТЬ ЕЩЕ";
+            startButton.disabled = false;
+            startButton.style.backgroundColor = "#2ed573";
+
+            // Показываем итоговый счет
+            alert(`Игра окончена!\nВаш счет: ${score}`);
+            // Прячем цель
+            targetElement.style.display = 'none';
+        }
+
+        // === ОБРАБОТЧИК СОБЫТИЙ ===
+        // Обработчик клика (тапа) по цели
+        targetElement.addEventListener('click', function () {
+            if (!isGameActive) return; // Если игра не активна, ничего не делаем
+
+            score++; // Увеличиваем счет на 1
+            scoreElement.textContent = score; // Обновляем счет на экране
+
+            // Сразу перемещаем цель в новое место
+            moveTarget();
+        });
+
+        // Обработчик клика (тапа) по кнопке старта
+        startButton.addEventListener('click', startGame);
+
+        // На маленьких экранах немного уменьшаем размер цели
+        if (window.innerWidth < 768) {
+            targetElement.style.width = '60px';
+            targetElement.style.height = '60px';
+        }
+    </script>
+</body>
+</html>
