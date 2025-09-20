@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Уличный текстовый визуализатор</title>
+    <title>Фрактальный текстовый визуализатор</title>
     <style>
         * {
             margin: 0;
@@ -16,8 +16,7 @@
             color: #fff;
             overflow: hidden;
             height: 100vh;
-            font-family: 'Arial', sans-serif;
-            position: relative;
+            font-family: 'Courier New', monospace;
         }
         
         #canvas {
@@ -26,6 +25,17 @@
             left: 0;
             width: 100%;
             height: 100%;
+        }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            mix-blend-mode: overlay;
         }
         
         .controls {
@@ -57,7 +67,7 @@
             border-color: #666;
         }
         
-        .info-panel {
+        .info {
             position: fixed;
             top: 20px;
             right: 20px;
@@ -74,7 +84,7 @@
             top: 20px;
             left: 20px;
             z-index: 100;
-            font-size: 18px;
+            font-size: 16px;
             color: #fff;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
@@ -82,125 +92,98 @@
 </head>
 <body>
     <canvas id="canvas"></canvas>
+    <div class="overlay" id="overlay"></div>
     
-    <div class="title">Уличный текстовый визуализатор</div>
+    <div class="title">Фрактальный текстовый визуализатор</div>
     
-    <div class="info-panel">
-        <div>Частиц: <span id="particle-count">0</span></div>
+    <div class="info">
         <div>FPS: <span id="fps">0</span></div>
+        <div>Частиц: <span id="particle-count">0</span></div>
     </div>
     
     <div class="controls">
-        <button class="control-btn" id="mode-btn">Режим: Симметрия</button>
-        <button class="control-btn" id="density-up">+ Плотность</button>
-        <button class="control-btn" id="density-down">- Плотность</button>
-        <button class="control-btn" id="speed-up">+ Скорость</button>
-        <button class="control-btn" id="speed-down">- Скорость</button>
+        <button class="control-btn" id="mode-btn">Режим: Мандельброт</button>
+        <button class="control-btn" id="color-btn">Цвет: Синий</button>
+        <button class="control-btn" id="texture-btn">Текстура: Включить</button>
     </div>
 
-    <audio id="audio-element" loop>
-        <source src="https://assets.mixkit.co/music/preview/mixkit-ambient-basic-loop-315.mp3" type="audio/mpeg">
-    </audio>
-
     <script>
-        // Массив уличных надписей и объявлений
-        const STREET_TEXTS = [
-            "КУПЛЮ ВОЛОСЫ", "РАЗВАЛ СХОЖДЕНИЕ", "ПОМОЩЬ В ТЯЖЕЛОЙ СИТУАЦИИ",
-            "НАРКОМАНИЯ АЛКОГОЛИЗМ", "СТОМАТОЛОГИЯ", "МАГНИТ НЕ ПРИСЛОНЯТЬСЯ",
-            "ПРОКАТ КОНЬКОВ", "ОБМЕН КВАРТИР", "СДАМ ГАРАЖ", "РЕМОНТ ТЕЛЕФОНОВ",
-            "ВЫЗОВ ТАКСИ", "ПРОПАЛ КОТ", "СУШИ ПИЦЦА", "WI-FI БЕСПЛАТНО",
-            "ЗДЕСЬ БЫЛ ВАСЯ", "ОСТОРОЖНО ДВЕРЬ", "ВХОД С ЗАДНЕГО КРЫЛЬЦА",
-            "ОБЪЕЗД СЛЕВА", "ПРОЕЗД ЗАПРЕЩЕН", "ПОСТОРОННИМ ВХОД ВОСПРЕЩЕН",
-            "АКЦИЯ СКИДКА", "РАСПРОДАЖА", "ТОВАРЫ ДЛЯ ДОМА", "КЛУБНИКА ОПТОМ",
-            "РЕКЛАМНАЯ ПАУЗА", "ДОБРО ПОЖАЛОВАТЬ", "ВЫХОД", "ЗАКРЫТО НА ПЕРЕРЫВ",
-            "ОЖИДАНИЕ 15 МИНУТ", "НЕТ МЕСТ", "ЗАНЯТО", "СВОБОДНО", "КАССА",
-            "НЕ КУРИТЬ", "НЕ СОРИТЬ", "ПОСТОЯННО ИЩУТСЯ", "ТРЕБУЮТСЯ РАБОЧИЕ",
-            "УТЮЖЕНИЕ БЕЛЬЯ", "ЧИСТКА ОБУВИ", "РЕМОНТ ОБУВИ", "КЛЮЧИ ОТ КВАРТИРЫ",
-            "ПОТЕРЯЛСЯ ПАСПОРТ", "ВОЗЬМУ В ДОЛГ", "ДАМ В ДОЛГ", "МЕНЯЮ",
-            "ПРОДАМ ДИВАН", "КУПЛЮ ХОЛОДИЛЬНИК", "БУДЬ ОСТОРОЖЕН", "НЕ ВЛЕЗАЙ УБЬЕТ",
-            "ОБЪЯВЛЕНИЯ", "РЕКЛАМА", "ПРЯМОЙ ЭФИР", "НОВОСТИ", "ПОГОДА",
-            "КУРС ВАЛЮТ", "СКОРО ОТКРЫТИЕ", "ЗАКРЫТО НА САНИТАРНЫЙ ДЕНЬ"
-        ];
-
         // Конфигурация
         const CONFIG = {
-            particleCount: 100,
-            maxParticles: 500,
-            minParticles: 50,
-            particleSize: 14,
-            speed: 1,
-            symmetryMode: 2, // 0 - нет симметрии, 1 - горизонтальная, 2 - вертикальная, 3 - обе
-            colorPalette: [
-                '#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff',
-                '#ff8844', '#8844ff', '#44ff88', '#ff4488', '#88ff44', '#4488ff'
-            ],
-            textChangeInterval: 3000,
-            spawnRate: 5
+            maxIterations: 100,
+            scale: 200,
+            offset: { x: 0, y: 0 },
+            colorMode: 0,
+            showTexture: true,
+            textureOpacity: 0.3,
+            textElements: [
+                "КУПЛЮ ВОЛОСЫ", "РАЗВАЛ СХОЖДЕНИЕ", "ПОМОЩЬ В ТЯЖЕЛОЙ СИТУАЦИИ",
+                "НАРКОМАНИЯ АЛКОГОЛИЗМ", "СТОМАТОЛОГИЯ", "МАГНИТ НЕ ПРИСЛОНЯТЬСЯ",
+                "ПРОКАТ КОНЬКОВ", "ОБМЕН КВАРТИР", "СДАМ ГАРАЖ", "РЕМОНТ ТЕЛЕФОНОВ",
+                "ВЫЗОВ ТАКСИ", "ПРОПАЛ КОТ", "СУШИ ПИЦЦА", "WI-FI БЕСПЛАТНО",
+                "ЗДЕСЬ БЫЛ ВАСЯ", "ОСТОРОЖНО ДВЕРЬ", "ВХОД С ЗАДНЕГО КРЫЛЬЦА",
+                "ОБЪЕЗД СЛЕВА", "ПРОЕЗД ЗАПРЕЩЕН", "ПОСТОРОННИМ ВХОД ВОСПРЕЩЕН"
+            ]
         };
 
         // Состояние
         let state = {
-            particles: [],
-            lastTime: 0,
+            mouseX: 0,
+            mouseY: 0,
+            isDragging: false,
+            lastX: 0,
+            lastY: 0,
             fps: 0,
             frameCount: 0,
             lastFpsUpdate: 0,
-            audioContext: null,
-            analyser: null,
-            audioData: null,
-            isPlaying: false
+            zoom: 1,
+            fractalType: 0, // 0: Мандельброт, 1: Джулия, 2: Ньютон
+            textParticles: []
         };
 
         // Элементы DOM
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const audioElement = document.getElementById('audio-element');
-        const particleCountEl = document.getElementById('particle-count');
+        const overlay = document.getElementById('overlay');
         const fpsEl = document.getElementById('fps');
+        const particleCountEl = document.getElementById('particle-count');
         const modeBtn = document.getElementById('mode-btn');
-        const densityUpBtn = document.getElementById('density-up');
-        const densityDownBtn = document.getElementById('density-down');
-        const speedUpBtn = document.getElementById('speed-up');
-        const speedDownBtn = document.getElementById('speed-down');
+        const colorBtn = document.getElementById('color-btn');
+        const textureBtn = document.getElementById('texture-btn');
 
         // Инициализация
         function init() {
             resizeCanvas();
-            createParticles();
+            createTextParticles();
             setupEventListeners();
-            setupAudio();
             
             // Запуск анимации
             requestAnimationFrame(animate);
         }
 
-        // Создание частиц
-        function createParticles() {
-            state.particles = [];
-            
-            for (let i = 0; i < CONFIG.particleCount; i++) {
-                addParticle();
-            }
+        // Изменение размера canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            CONFIG.offset.x = canvas.width / 2;
+            CONFIG.offset.y = canvas.height / 2;
         }
 
-        // Добавление новой частицы
-        function addParticle() {
-            const text = STREET_TEXTS[Math.floor(Math.random() * STREET_TEXTS.length)];
-            const color = CONFIG.colorPalette[Math.floor(Math.random() * CONFIG.colorPalette.length)];
+        // Создание текстовых частиц
+        function createTextParticles() {
+            state.textParticles = [];
             
-            state.particles.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                text: text,
-                size: CONFIG.particleSize + Math.random() * 10 - 5,
-                color: color,
-                speed: CONFIG.speed * (0.5 + Math.random()),
-                life: 1,
-                targetX: Math.random() * canvas.width,
-                targetY: Math.random() * canvas.height,
-                opacity: 0,
-                maxOpacity: 0.7 + Math.random() * 0.3
-            });
+            for (let i = 0; i < 20; i++) {
+                state.textParticles.push({
+                    text: CONFIG.textElements[Math.floor(Math.random() * CONFIG.textElements.length)],
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: 10 + Math.random() * 20,
+                    opacity: 0.1 + Math.random() * 0.3,
+                    speed: 0.5 + Math.random() * 2,
+                    angle: Math.random() * Math.PI * 2
+                });
+            }
         }
 
         // Настройка обработчиков событий
@@ -208,77 +191,181 @@
             // Изменение размера окна
             window.addEventListener('resize', resizeCanvas);
             
+            // Взаимодействие с мышью
+            canvas.addEventListener('mousedown', (e) => {
+                state.isDragging = true;
+                state.lastX = e.clientX;
+                state.lastY = e.clientY;
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                state.mouseX = e.clientX;
+                state.mouseY = e.clientY;
+                
+                if (state.isDragging) {
+                    CONFIG.offset.x += e.clientX - state.lastX;
+                    CONFIG.offset.y += e.clientY - state.lastY;
+                    state.lastX = e.clientX;
+                    state.lastY = e.clientY;
+                }
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                state.isDragging = false;
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                state.isDragging = false;
+            });
+            
+            // Масштабирование
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomIntensity = 0.1;
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+                
+                const worldMouseX = (mouseX - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
+                const worldMouseY = (mouseY - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
+                
+                if (e.deltaY < 0) {
+                    state.zoom *= 1 + zoomIntensity;
+                } else {
+                    state.zoom /= 1 + zoomIntensity;
+                }
+                
+                CONFIG.offset.x = mouseX - worldMouseX * CONFIG.scale * state.zoom;
+                CONFIG.offset.y = mouseY - worldMouseY * CONFIG.scale * state.zoom;
+            });
+            
             // Кнопки управления
             modeBtn.addEventListener('click', () => {
-                CONFIG.symmetryMode = (CONFIG.symmetryMode + 1) % 4;
+                state.fractalType = (state.fractalType + 1) % 3;
                 updateModeButtonText();
             });
             
-            densityUpBtn.addEventListener('click', () => {
-                CONFIG.particleCount = Math.min(CONFIG.maxParticles, CONFIG.particleCount + 50);
-                createParticles();
+            colorBtn.addEventListener('click', () => {
+                CONFIG.colorMode = (CONFIG.colorMode + 1) % 5;
+                updateColorButtonText();
             });
             
-            densityDownBtn.addEventListener('click', () => {
-                CONFIG.particleCount = Math.max(CONFIG.minParticles, CONFIG.particleCount - 50);
-                createParticles();
+            textureBtn.addEventListener('click', () => {
+                CONFIG.showTexture = !CONFIG.showTexture;
+                textureBtn.textContent = CONFIG.showTexture ? 'Текстура: Включить' : 'Текстура: Выключить';
             });
-            
-            speedUpBtn.addEventListener('click', () => {
-                CONFIG.speed = Math.min(5, CONFIG.speed + 0.5);
-            });
-            
-            speedDownBtn.addEventListener('click', () => {
-                CONFIG.speed = Math.max(0.5, CONFIG.speed - 0.5);
-            });
-            
-            // Запуск/остановка аудио по клику
-            canvas.addEventListener('click', toggleAudio);
         }
 
         // Обновление текста кнопки режима
         function updateModeButtonText() {
-            const modes = ["Без симметрии", "Горизонтальная", "Вертикальная", "Двойная"];
-            modeBtn.textContent = `Режим: ${modes[CONFIG.symmetryMode]}`;
+            const modes = ["Мандельброт", "Джулия", "Ньютон"];
+            modeBtn.textContent = `Режим: ${modes[state.fractalType]}`;
         }
 
-        // Изменение размера canvas
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        // Обновление текста кнопки цвета
+        function updateColorButtonText() {
+            const colors = ["Синий", "Красный", "Зеленый", "Радуга", "Монохром"];
+            colorBtn.textContent = `Цвет: ${colors[CONFIG.colorMode]}`;
         }
 
-        // Настройка аудио
-        function setupAudio() {
-            try {
-                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                state.analyser = state.audioContext.createAnalyser();
-                state.analyser.fftSize = 256;
+        // Вычисление фрактала
+        function calculateFractal(x, y) {
+            let zx, zy, cx, cy;
+            
+            if (state.fractalType === 0) { // Мандельброт
+                zx = 0;
+                zy = 0;
+                cx = (x - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
+                cy = (y - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
+            } else if (state.fractalType === 1) { // Джулия
+                zx = (x - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
+                zy = (y - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
+                cx = 0.285 + state.mouseX / canvas.width * 0.1;
+                cy = 0.01 + state.mouseY / canvas.height * 0.1;
+            } else { // Ньютон
+                zx = (x - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
+                zy = (y - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
                 
-                const source = state.audioContext.createMediaElementSource(audioElement);
-                source.connect(state.analyser);
-                state.analyser.connect(state.audioContext.destination);
-                
-                state.audioData = new Uint8Array(state.analyser.frequencyBinCount);
-                
-                audioElement.volume = 0.3;
-            } catch (e) {
-                console.log("Аудио API не поддерживается", e);
-            }
-        }
-
-        // Переключение аудио
-        function toggleAudio() {
-            if (state.audioContext) {
-                if (state.isPlaying) {
-                    audioElement.pause();
-                    state.isPlaying = false;
-                } else {
-                    audioElement.play();
-                    state.audioContext.resume();
-                    state.isPlaying = true;
+                for (let i = 0; i < CONFIG.maxIterations; i++) {
+                    if (zx * zx + zy * zy > 4) return i;
+                    
+                    const nextZX = (2 * zx + zx * zx - zy * zy) / (3 * (zx * zx + zy * zy));
+                    const nextZY = (2 * zy - 2 * zx * zy) / (3 * (zx * zx + zy * zy));
+                    
+                    zx = nextZX;
+                    zy = nextZY;
                 }
+                
+                return CONFIG.maxIterations;
             }
+            
+            // Вычисление итераций для Мандельброта и Джулии
+            for (let i = 0; i < CONFIG.maxIterations; i++) {
+                if (zx * zx + zy * zy > 4) return i;
+                
+                const nextZX = zx * zx - zy * zy + cx;
+                const nextZY = 2 * zx * zy + cy;
+                
+                zx = nextZX;
+                zy = nextZY;
+            }
+            
+            return CONFIG.maxIterations;
+        }
+
+        // Получение цвета на основе итераций
+        function getColor(iterations) {
+            if (iterations === CONFIG.maxIterations) return '#000';
+            
+            const t = iterations / CONFIG.maxIterations;
+            
+            switch (CONFIG.colorMode) {
+                case 0: // Синий
+                    return `rgb(0, 0, ${Math.floor(255 * t)})`;
+                case 1: // Красный
+                    return `rgb(${Math.floor(255 * t)}, 0, 0)`;
+                case 2: // Зеленый
+                    return `rgb(0, ${Math.floor(255 * t)}, 0)`;
+                case 3: // Радуга
+                    const r = Math.floor(127 * (1 + Math.sin(t * Math.PI * 2)));
+                    const g = Math.floor(127 * (1 + Math.sin(t * Math.PI * 2 + Math.PI * 2/3)));
+                    const b = Math.floor(127 * (1 + Math.sin(t * Math.PI * 2 + Math.PI * 4/3)));
+                    return `rgb(${r}, ${g}, ${b})`;
+                case 4: // Монохром
+                    const brightness = Math.floor(255 * t);
+                    return `rgb(${brightness}, ${brightness}, ${brightness})`;
+            }
+        }
+
+        // Отрисовка текстовых частиц
+        function drawTextParticles() {
+            if (!CONFIG.showTexture) return;
+            
+            ctx.save();
+            ctx.globalAlpha = CONFIG.textureOpacity;
+            
+            for (const particle of state.textParticles) {
+                // Обновление позиции
+                particle.x += Math.cos(particle.angle) * particle.speed;
+                particle.y += Math.sin(particle.angle) * particle.speed;
+                
+                // Если частица вышла за границы, создаем новую
+                if (particle.x < -100 || particle.x > canvas.width + 100 ||
+                    particle.y < -100 || particle.y > canvas.height + 100) {
+                    particle.x = Math.random() * canvas.width;
+                    particle.y = Math.random() * canvas.height;
+                    particle.angle = Math.random() * Math.PI * 2;
+                    particle.text = CONFIG.textElements[Math.floor(Math.random() * CONFIG.textElements.length)];
+                }
+                
+                // Отрисовка текста
+                ctx.font = `${particle.size}px Arial`;
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(particle.text, particle.x, particle.y);
+            }
+            
+            ctx.restore();
         }
 
         // Анимация
@@ -292,98 +379,43 @@
                 state.lastFpsUpdate = time;
                 state.frameCount = 0;
                 fpsEl.textContent = state.fps;
-                particleCountEl.textContent = state.particles.length;
-            }
-            
-            // Обновление данных аудио
-            if (state.analyser && state.isPlaying) {
-                state.analyser.getByteFrequencyData(state.audioData);
+                particleCountEl.textContent = state.textParticles.length;
             }
             
             // Очистка canvas
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Добавление новых частиц
-            if (state.particles.length < CONFIG.particleCount && Math.random() < 0.1 * CONFIG.spawnRate) {
-                addParticle();
+            // Отрисовка фрактала
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let y = 0; y < canvas.height; y += 2) {
+                for (let x = 0; x < canvas.width; x += 2) {
+                    const iterations = calculateFractal(x, y);
+                    const color = getColor(iterations);
+                    
+                    // Преобразование цвета в RGB
+                    const rgb = color.match(/\d+/g);
+                    const index = (y * canvas.width + x) * 4;
+                    
+                    data[index] = parseInt(rgb[0]);     // R
+                    data[index + 1] = parseInt(rgb[1]); // G
+                    data[index + 2] = parseInt(rgb[2]); // B
+                    data[index + 3] = 255;              // A
+                }
             }
             
-            // Обновление и отрисовка частиц
-            updateParticles(time);
+            ctx.putImageData(imageData, 0, 0);
             
-            state.lastTime = time;
-        }
-
-        // Обновление частиц
-        function updateParticles(time) {
-            for (let i = state.particles.length - 1; i >= 0; i--) {
-                const p = state.particles[i];
-                
-                // Движение к целевой точке
-                p.x += (p.targetX - p.x) * 0.01 * p.speed;
-                p.y += (p.targetY - p.y) * 0.01 * p.speed;
-                
-                // Изменение непрозрачности
-                if (p.opacity < p.maxOpacity) {
-                    p.opacity += 0.01;
-                }
-                
-                // Уменьшение времени жизни
-                p.life -= 0.001;
-                
-                // Если частица умерла, удаляем ее
-                if (p.life <= 0) {
-                    state.particles.splice(i, 1);
-                    continue;
-                }
-                
-                // Отрисовка частицы
-                drawParticle(p);
-                
-                // Отрисовка симметричных отражений
-                if (CONFIG.symmetryMode === 1 || CONFIG.symmetryMode === 3) {
-                    // Горизонтальная симметрия
-                    drawParticle({
-                        ...p,
-                        x: canvas.width - p.x
-                    });
-                }
-                
-                if (CONFIG.symmetryMode === 2 || CONFIG.symmetryMode === 3) {
-                    // Вертикальная симметрия
-                    drawParticle({
-                        ...p,
-                        y: canvas.height - p.y
-                    });
-                }
-                
-                if (CONFIG.symmetryMode === 3) {
-                    // Двойная симметрия
-                    drawParticle({
-                        ...p,
-                        x: canvas.width - p.x,
-                        y: canvas.height - p.y
-                    });
-                }
-            }
-        }
-
-        // Отрисовка частицы
-        function drawParticle(p) {
-            ctx.save();
-            ctx.globalAlpha = p.opacity * p.life;
-            ctx.font = `${p.size}px Arial`;
-            ctx.fillStyle = p.color;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(p.text, p.x, p.y);
-            ctx.restore();
+            // Отрисовка текстовых частиц
+            drawTextParticles();
         }
 
         // Запуск при загрузке
         window.addEventListener('load', init);
         updateModeButtonText();
+        updateColorButtonText();
     </script>
 </body>
 </html>
