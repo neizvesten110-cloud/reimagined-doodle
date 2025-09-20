@@ -9,8 +9,6 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Courier New', monospace;
-            transition: all 0.5s ease;
         }
         
         body {
@@ -18,35 +16,80 @@
             color: #fff;
             overflow: hidden;
             height: 100vh;
+            font-family: 'Times New Roman', serif;
             cursor: none;
+            position: relative;
         }
         
-        #content {
-            position: relative;
+        .text-layer {
+            position: absolute;
             width: 100%;
             height: 100%;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            z-index: 10;
+            pointer-events: none;
+            opacity: 0.8;
+            mix-blend-mode: screen;
         }
         
-        .hidden-element {
+        .floating-text {
             position: absolute;
-            width: 30px;
-            height: 30px;
-            background: transparent;
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            white-space: nowrap;
+            animation: float 30s linear infinite;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            pointer-events: auto;
+            cursor: pointer;
             z-index: 100;
         }
         
-        .question {
-            font-size: 24px;
-            margin-bottom: 30px;
+        .floating-text:hover {
+            color: #ff5555;
+            text-shadow: 0 0 15px #ff0000;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+            }
+            100% {
+                transform: translateY(-100%) translateX(calc(100vw - 100%));
+            }
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 2s ease;
+        }
+        
+        .overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .question-box {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             max-width: 80%;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            text-align: center;
+            box-shadow: 0 0 50px rgba(100, 100, 255, 0.5);
+        }
+        
+        .question {
+            font-size: 28px;
+            margin-bottom: 25px;
+            line-height: 1.4;
         }
         
         .options {
@@ -54,86 +97,86 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 15px;
-            margin-bottom: 40px;
         }
         
         .option {
             padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(50, 50, 150, 0.3);
+            border: 1px solid rgba(100, 100, 255, 0.5);
             color: white;
             font-size: 18px;
             cursor: pointer;
-            border-radius: 5px;
+            transition: all 0.3s ease;
         }
         
         .option:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(70, 70, 200, 0.5);
+            transform: scale(1.05);
         }
         
-        .glitch-effect {
-            animation: glitch 0.3s linear infinite;
+        .glitch-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s ease;
         }
         
-        @keyframes glitch {
-            0% {
-                transform: translate(0);
-                filter: hue-rotate(0deg);
-            }
-            20% {
-                transform: translate(-5px, 5px);
-                filter: hue-rotate(90deg);
-            }
-            40% {
-                transform: translate(-5px, -5px);
-                filter: hue-rotate(180deg);
-            }
-            60% {
-                transform: translate(5px, 5px);
-                filter: hue-rotate(270deg);
-            }
-            80% {
-                transform: translate(5px, -5px);
-                filter: hue-rotate(300deg);
-            }
-            100% {
-                transform: translate(0);
-                filter: hue-rotate(360deg);
-            }
-        }
-        
-        .fade-effect {
-            animation: fade 3s linear forwards;
-        }
-        
-        @keyframes fade {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-        
-        .blur-effect {
-            animation: blur 5s linear forwards;
-        }
-        
-        @keyframes blur {
-            0% { filter: blur(0px); }
-            100% { filter: blur(10px); }
-        }
-        
-        .counter {
+        .glitch-layer {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 18px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
             opacity: 0.7;
         }
         
-        .secret-code {
+        .counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-family: monospace;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+            z-index: 200;
+        }
+        
+        .hidden-element {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            font-size: 10px;
-            opacity: 0.1;
+            width: 30px;
+            height: 30px;
+            background: transparent;
+            z-index: 150;
+            cursor: pointer;
+        }
+        
+        .pulse {
+            animation: pulse 3s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.2; }
+            100% { opacity: 0.8; }
+        }
+        
+        .flicker {
+            animation: flicker 5s infinite alternate;
+        }
+        
+        @keyframes flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                opacity: 1;
+            }
+            20%, 24%, 55% {
+                opacity: 0;
+            }
         }
         
         .noise {
@@ -144,48 +187,28 @@
             height: 100%;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
             opacity: 0.05;
-            z-index: 1;
+            z-index: 10;
             pointer-events: none;
-        }
-        
-        .message {
-            position: absolute;
-            font-size: 14px;
-            opacity: 0;
-            animation: float 10s linear forwards;
-        }
-        
-        @keyframes float {
-            0% {
-                transform: translateY(0);
-                opacity: 0;
-            }
-            10% {
-                opacity: 0.7;
-            }
-            90% {
-                opacity: 0.7;
-            }
-            100% {
-                transform: translateY(-100vh);
-                opacity: 0;
-            }
         }
     </style>
 </head>
 <body>
     <div class="noise"></div>
-    <div id="content">
-        <div class="question" id="question">Зачем ты здесь?</div>
-        <div class="options" id="options">
-            <button class="option" data-next="1">Я ищу смысл</button>
-            <button class="option" data-next="2">Случайно оказался</button>
-            <button class="option" data-next="3">Кто ты такой, чтобы спрашивать?</button>
-            <button class="option" data-next="4">...</button>
+    <div class="text-layer" id="text-layer"></div>
+    <div class="glitch-container" id="glitch-container">
+        <div class="glitch-layer" id="glitch-layer-1"></div>
+        <div class="glitch-layer" id="glitch-layer-2"></div>
+        <div class="glitch-layer" id="glitch-layer-3"></div>
+    </div>
+    
+    <div class="overlay" id="overlay">
+        <div class="question-box">
+            <div class="question" id="question"></div>
+            <div class="options" id="options"></div>
         </div>
     </div>
+    
     <div class="counter" id="counter">0000</div>
-    <div class="secret-code" id="secret-code">42</div>
 
     <audio id="bgMusic" loop>
         <source src="https://assets.mixkit.co/music/preview/mixkit-ambient-basic-loop-315.mp3" type="audio/mpeg">
@@ -200,146 +223,346 @@
     </audio>
 
     <script>
-        // Элементы DOM
-        const contentEl = document.getElementById('content');
-        const questionEl = document.getElementById('question');
-        const optionsEl = document.getElementById('options');
-        const counterEl = document.getElementById('counter');
-        const secretCodeEl = document.getElementById('secret-code');
-        const bgMusic = document.getElementById('bgMusic');
-        const glitchSound = document.getElementById('glitchSound');
-        const clickSound = document.getElementById('clickSound');
+        // Конфигурация
+        const CONFIG = {
+            textPool: [
+                "Что есть реальность?",
+                "Существуем ли мы вне восприятия?",
+                "Всё уже предопределено?",
+                "Свобода воли - иллюзия?",
+                "42",
+                "Смысл бытия ускользает",
+                "Мы лишь сновидение кого-то другого",
+                "Время - это река без берегов",
+                "Я мыслю, следовательно, я существую?",
+                "За гранью понимания",
+                "Всё тленно, ничто не вечно",
+                "Бытие определяет сознание",
+                "Случайность или закономерность?",
+                "Познаваем ли мир?",
+                "В начале было Слово",
+                "Бог мёртв",
+                "Экзистенциальная тревога",
+                "Абсурд бытия",
+                "Зачем?",
+                "Ничто не истина, всё permitted"
+            ],
+            images: [
+                "https://images.unsplash.com/photo-1536240478700-b869070f9279?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+                "https://images.unsplash.com/photo-1516545595035-b494dd0161e4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+                "https://images.unsplash.com/photo-1505506874110-6a7a69069a08?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+                "https://images.unsplash.com/photo-1526281216101-0c10d5d789b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+                "https://images.unsplash.com/photo-1465158753225-0c6f6365c6a5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            ],
+            questions: [
+                {
+                    text: "Существуем ли мы вне чьего-либо восприятия?",
+                    options: [
+                        "Бытие не зависит от наблюдателя",
+                        "Реальность создаётся через наблюдение",
+                        "Мы существуем только в сознании Бога",
+                        "Вопрос бессмысленен"
+                    ]
+                },
+                {
+                    text: "Свобода воли - это иллюзия?",
+                    options: [
+                        "Да, всё предопределено",
+                        "Нет, мы делаем настоящий выбор",
+                        "Свобода воли относительна",
+                        "Неважно, иллюзия или нет"
+                    ]
+                },
+                {
+                    text: "В чём смысл существования?",
+                    options: [
+                        "В поиске удовольствий",
+                        "В служении высшей цели",
+                        "Смысла не существует",
+                        "Смысл в том, чтобы создавать смысл"
+                    ]
+                },
+                {
+                    text: "Сознание - это продукт мозга или нечто отдельное?",
+                    options: [
+                        "Продукт нейронной активности",
+                        "Сознание фундаментально и независимо",
+                        "Сознание - иллюзия",
+                        "Непостижимо для человеческого разума"
+                    ]
+                },
+                {
+                    text: "Существует ли объективная мораль?",
+                    options: [
+                        "Да, моральные законы универсальны",
+                        "Нет, мораль относительна",
+                        "Мораль - социальный конструкт",
+                        "Мораль определяется последствиями"
+                    ]
+                }
+            ],
+            externalLinks: [
+                "https://ru.wikipedia.org/wiki/Солипсизм",
+                "https://ru.wikipedia.org/wiki/Экзистенциализм",
+                "https://ru.wikipedia.org/wiki/Теория_симуляции",
+                "https://ru.wikipedia.org/wiki/Философский_зомби",
+                "https://ru.wikipedia.org/wiki/Нигилизм",
+                "https://plato.stanford.edu/entries/time/",
+                "https://www.britannica.com/topic/consciousness",
+                "https://iep.utm.edu/freedom/",
+                "https://www.youtube.com/watch?v=WO2X3oZEJuo",
+                "https://www.youtube.com/watch?v=4V2RgQeUCBU"
+            ]
+        };
         
         // Состояние
         let state = {
             existentialLevel: 0,
             interactionCount: 0,
             hiddenParameter: Math.floor(Math.random() * 100),
-            hasSeenTruth: false,
-            glitchMode: false
+            glitchMode: false,
+            activeTexts: [],
+            currentQuestion: null
         };
         
-        // Вопросы и ответы
-        const questions = [
-            {
-                id: 0,
-                text: "Зачем ты здесь?",
-                options: [
-                    { text: "Я ищу смысл", next: 1 },
-                    { text: "Случайно оказался", next: 2 },
-                    { text: "Кто ты такой, чтобы спрашивать?", next: 3 },
-                    { text: "...", next: 4 }
-                ]
-            },
-            {
-                id: 1,
-                text: "Как ты думаешь, существует ли объективная реальность?",
-                options: [
-                    { text: "Да, конечно", next: 5 },
-                    { text: "Нет, всё субъективно", next: 6 },
-                    { text: "Не знаю", next: 7 },
-                    { text: "Реальность - это иллюзия", next: 8 }
-                ]
-            },
-            {
-                id: 2,
-                text: "Случайность - это просто непознанная закономерность?",
-                options: [
-                    { text: "Да", next: 9 },
-                    { text: "Нет", next: 10 },
-                    { text: "Всё предопределено", next: 11 },
-                    { text: "Случайность не существует", next: 12 }
-                ]
-            },
-            {
-                id: 3,
-                text: "Ты действительно хочешь знать кто я?",
-                options: [
-                    { text: "Да", next: 13 },
-                    { text: "Нет", next: 14 },
-                    { text: "Мне всё равно", next: 15 },
-                    { text: "Ты - это я", next: 16 }
-                ]
-            },
-            {
-                id: 4,
-                text: "Молчание - это ответ?",
-                options: [
-                    { text: "Да", next: 17 },
-                    { text: "Нет", next: 18 },
-                    { text: "Иногда", next: 19 },
-                    { text: "...", next: 20 }
-                ]
-            },
-            // Дополнительные вопросы...
-            {
-                id: 99,
-                text: "Достигнув конца, ты понимаешь, что это только начало?",
-                options: [
-                    { text: "Начать заново", next: 0 },
-                    { text: "Остаться здесь", next: 99 },
-                    { text: "Выйти", next: 100 },
-                    { text: "Погрузиться глубже", next: 101 }
-                ]
-            }
-        ];
-        
-        // Ссылки на внешние ресурсы
-        const externalLinks = [
-            "https://ru.wikipedia.org/wiki/Солипсизм",
-            "https://ru.wikipedia.org/wiki/Экзистенциализм",
-            "https://ru.wikipedia.org/wiki/Теория_симуляции",
-            "https://ru.wikipedia.org/wiki/Философский_зомби",
-            "https://ru.wikipedia.org/wiki/Когнитивная_наука",
-            "https://plato.stanford.edu/entries/time/",
-            "https://www.britannica.com/topic/consciousness",
-            "https://iep.utm.edu/freedom/",
-            "https://www.youtube.com/watch?v=dQw4w9WgXcQ", // Rick Astley - Never Gonna Give You Up
-            "https://www.youtube.com/watch?v=W8AehDshvqI"  // Секретный философский ролик
-        ];
-        
-        // Цитаты и сообщения
-        const messages = [
-            "Ты действительно свободен?",
-            "42",
-            "Что если ничего не имеет значения?",
-            "Сознание - это иллюзия?",
-            "Твои решения действительно твои?",
-            "Время линейно?",
-            "Мы одни во вселенной?",
-            "Смысл жизни в том, чтобы найти смысл?",
-            "Всё уже было раньше",
-            "Реальность превыше фантазии",
-            "Ты спишь?",
-            "Проснись"
-        ];
+        // Элементы DOM
+        const textLayer = document.getElementById('text-layer');
+        const glitchContainer = document.getElementById('glitch-container');
+        const overlay = document.getElementById('overlay');
+        const questionEl = document.getElementById('question');
+        const optionsEl = document.getElementById('options');
+        const counterEl = document.getElementById('counter');
+        const bgMusic = document.getElementById('bgMusic');
+        const glitchSound = document.getElementById('glitchSound');
+        const clickSound = document.getElementById('clickSound');
         
         // Инициализация
         function init() {
-            updateCounter();
+            createFloatingTexts();
             createHiddenElements();
+            setupGlitchLayers();
             playMusic();
+            
+            // Периодические эффекты
             setInterval(updateCounter, 30000);
-            setInterval(showRandomMessage, 15000);
-            setInterval(randomGlitch, 10000);
+            setInterval(addFloatingText, 10000);
+            setInterval(randomGlitch, 15000);
+            setInterval(showRandomQuestion, 60000);
             
-            // Обработчики событий для опций
-            optionsEl.addEventListener('click', function(e) {
-                if (e.target.classList.contains('option')) {
-                    handleOptionClick(e.target);
-                }
-            });
-            
-            // Обработчики для скрытых элементов
-            document.querySelectorAll('.hidden-element').forEach(el => {
-                el.addEventListener('click', handleHiddenElementClick);
-            });
-            
-            // Сенсорная поддержка
+            // Обработчики событий
+            document.addEventListener('click', handleRandomEffect);
             document.addEventListener('touchstart', handleTouch, { passive: false });
             
-            // Случайное изменение цвета фона
-            setInterval(randomBackgroundShift, 20000);
+            // Случайные изменения фона
+            setInterval(changeBackground, 20000);
+            
+            // Начальный вопрос
+            setTimeout(showRandomQuestion, 5000);
+        }
+        
+        // Создание плавающих текстов
+        function createFloatingTexts() {
+            for (let i = 0; i < 10; i++) {
+                addFloatingText();
+            }
+        }
+        
+        // Добавление нового плавающего текста
+        function addFloatingText() {
+            const text = CONFIG.textPool[Math.floor(Math.random() * CONFIG.textPool.length)];
+            const textEl = document.createElement('div');
+            textEl.className = 'floating-text';
+            textEl.textContent = text;
+            textEl.style.top = `${Math.random() * 100}%`;
+            textEl.style.left = `${Math.random() * 100}%`;
+            textEl.style.animationDuration = `${20 + Math.random() * 30}s`;
+            textEl.style.fontSize = `${16 + Math.random() * 24}px`;
+            textEl.style.color = `hsl(${Math.random() * 360}, 70%, 70%)`;
+            
+            textEl.addEventListener('click', () => {
+                handleTextClick(textEl);
+            });
+            
+            textLayer.appendChild(textEl);
+            state.activeTexts.push(textEl);
+            
+            // Ограничение количества текстов
+            if (state.activeTexts.length > 20) {
+                const toRemove = state.activeTexts.shift();
+                toRemove.remove();
+            }
+        }
+        
+        // Обработка клика на текст
+        function handleTextClick(textEl) {
+            playSound(clickSound);
+            state.interactionCount++;
+            
+            // Случайные эффекты при клике
+            if (Math.random() > 0.7) {
+                triggerGlitch();
+            }
+            
+            if (Math.random() > 0.8) {
+                redirectToRandomSite();
+            }
+            
+            // Изменение текста
+            if (Math.random() > 0.5) {
+                textEl.textContent = CONFIG.textPool[Math.floor(Math.random() * CONFIG.textPool.length)];
+                textEl.style.color = `hsl(${Math.random() * 360}, 70%, 70%)`;
+            }
+            
+            updateCounter();
+        }
+        
+        // Создание скрытых интерактивных элементов
+        function createHiddenElements() {
+            for (let i = 0; i < 7; i++) {
+                const hiddenEl = document.createElement('div');
+                hiddenEl.className = 'hidden-element';
+                hiddenEl.style.top = `${Math.random() * 90}%`;
+                hiddenEl.style.left = `${Math.random() * 90}%`;
+                
+                if (Math.random() > 0.5) {
+                    hiddenEl.classList.add('pulse');
+                } else {
+                    hiddenEl.classList.add('flicker');
+                }
+                
+                hiddenEl.addEventListener('click', () => {
+                    handleHiddenElementClick(hiddenEl);
+                });
+                
+                document.body.appendChild(hiddenEl);
+            }
+        }
+        
+        // Обработка клика на скрытый элемент
+        function handleHiddenElementClick(el) {
+            state.existentialLevel++;
+            playSound(glitchSound);
+            
+            // Случайный эффект
+            triggerGlitch();
+            
+            // Перемещение элемента
+            el.style.top = `${Math.random() * 90}%`;
+            el.style.left = `${Math.random() * 90}%`;
+            
+            // Случайное изменение счетчика
+            state.interactionCount += Math.floor(Math.random() * 100);
+            updateCounter();
+        }
+        
+        // Настройка слоев глитча
+        function setupGlitchLayers() {
+            const layers = [
+                document.getElementById('glitch-layer-1'),
+                document.getElementById('glitch-layer-2'),
+                document.getElementById('glitch-layer-3')
+            ];
+            
+            layers.forEach(layer => {
+                layer.style.backgroundImage = `url(${CONFIG.images[Math.floor(Math.random() * CONFIG.images.length)]})`;
+                layer.style.mixBlendMode = ['screen', 'overlay', 'lighten'][Math.floor(Math.random() * 3)];
+                layer.style.opacity = Math.random() * 0.5;
+            });
+        }
+        
+        // Случайный глитч-эффект
+        function randomGlitch() {
+            if (Math.random() > 0.6) {
+                triggerGlitch();
+            }
+        }
+        
+        // Запуск эффекта глитча
+        function triggerGlitch() {
+            playSound(glitchSound);
+            
+            // Визуальный глитч
+            glitchContainer.style.opacity = 1;
+            
+            // Случайное изменение фона слоев
+            const layers = [
+                document.getElementById('glitch-layer-1'),
+                document.getElementById('glitch-layer-2'),
+                document.getElementById('glitch-layer-3')
+            ];
+            
+            layers.forEach(layer => {
+                if (Math.random() > 0.5) {
+                    layer.style.backgroundImage = `url(${CONFIG.images[Math.floor(Math.random() * CONFIG.images.length)]})`;
+                    layer.style.mixBlendMode = ['screen', 'overlay', 'lighten', 'difference'][Math.floor(Math.random() * 4)];
+                }
+                
+                layer.style.opacity = 0.2 + Math.random() * 0.5;
+            });
+            
+            setTimeout(() => {
+                glitchContainer.style.opacity = 0;
+            }, 200 + Math.random() * 1000);
+        }
+        
+        // Показать случайный вопрос
+        function showRandomQuestion() {
+            if (Math.random() > 0.3 && !overlay.classList.contains('active')) {
+                const question = CONFIG.questions[Math.floor(Math.random() * CONFIG.questions.length)];
+                state.currentQuestion = question;
+                
+                questionEl.textContent = question.text;
+                
+                // Очистка опций
+                optionsEl.innerHTML = '';
+                
+                // Добавление новых опций (в случайном порядке)
+                const shuffledOptions = [...question.options];
+                shuffleArray(shuffledOptions);
+                
+                shuffledOptions.forEach(opt => {
+                    const button = document.createElement('button');
+                    button.className = 'option';
+                    button.textContent = opt;
+                    
+                    button.addEventListener('click', () => {
+                        handleAnswerClick();
+                    });
+                    
+                    optionsEl.appendChild(button);
+                });
+                
+                // Показать overlay
+                overlay.classList.add('active');
+                
+                // Автоматическое скрытие через некоторое время
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                }, 10000 + Math.random() * 15000);
+            }
+        }
+        
+        // Обработка выбора ответа
+        function handleAnswerClick() {
+            playSound(clickSound);
+            state.interactionCount++;
+            
+            // Скрыть overlay
+            overlay.classList.remove('active');
+            
+            // Случайные эффекты после ответа
+            if (Math.random() > 0.7) {
+                triggerGlitch();
+            }
+            
+            if (Math.random() > 0.9) {
+                redirectToRandomSite();
+            }
+            
+            updateCounter();
+            
+            // Показать новый вопрос через некоторое время
+            setTimeout(showRandomQuestion, 5000 + Math.random() * 15000);
         }
         
         // Обновление счетчика
@@ -348,131 +571,22 @@
             const countStr = state.interactionCount.toString().padStart(4, '0');
             counterEl.textContent = countStr;
             
-            // Случайное изменение счетчика
-            if (Math.random() > 0.7) {
-                counterEl.classList.add('glitch-effect');
-                setTimeout(() => counterEl.classList.remove('glitch-effect'), 1000);
-            }
-        }
-        
-        // Обработка выбора опции
-        function handleOptionClick(optionEl) {
-            playSound(clickSound);
-            state.interactionCount++;
-            
-            // Случайный глитч при выборе
+            // Случайное изменение цвета счетчика
             if (Math.random() > 0.8) {
-                triggerGlitch();
-                
-                // Случайное открытие внешней ссылки
-                if (Math.random() > 0.9) {
-                    setTimeout(() => {
-                        window.open(externalLinks[Math.floor(Math.random() * externalLinks.length)], '_blank');
-                    }, 1000);
-                }
-            }
-            
-            const nextQuestionId = parseInt(optionEl.getAttribute('data-next'));
-            loadQuestion(nextQuestionId);
-            
-            // Случайное исчезновение кнопок
-            if (Math.random() > 0.7) {
+                counterEl.style.color = `hsl(${Math.random() * 360}, 100%, 70%)`;
                 setTimeout(() => {
-                    optionEl.style.opacity = '0';
-                    optionEl.style.pointerEvents = 'none';
-                    
-                    // Восстановление через некоторое время
-                    setTimeout(() => {
-                        optionEl.style.opacity = '1';
-                        optionEl.style.pointerEvents = 'auto';
-                    }, 3000);
-                }, 500);
+                    counterEl.style.color = '#0f0';
+                }, 3000);
             }
-            
-            updateCounter();
         }
         
-        // Загрузка вопроса
-        function loadQuestion(questionId) {
-            // Случайное изменение порядка вопросов
-            if (Math.random() > 0.9) {
-                questionId = Math.floor(Math.random() * questions.length);
-            }
-            
-            const question = questions.find(q => q.id === questionId) || questions[0];
-            
-            questionEl.textContent = question.text;
-            
-            // Очистка опций
-            optionsEl.innerHTML = '';
-            
-            // Добавление новых опций (иногда в случайном порядке)
-            const options = [...question.options];
-            if (Math.random() > 0.6) {
-                shuffleArray(options);
-            }
-            
-            options.forEach(opt => {
-                const button = document.createElement('button');
-                button.className = 'option';
-                button.textContent = opt.text;
-                button.setAttribute('data-next', opt.next);
-                
-                // Случайное скрытие некоторых кнопок
-                if (Math.random() > 0.8) {
-                    button.style.opacity = '0';
-                    button.style.pointerEvents = 'none';
-                    
-                    // Появление через некоторое время
-                    setTimeout(() => {
-                        button.style.opacity = '1';
-                        button.style.pointerEvents = 'auto';
-                    }, 2000);
-                }
-                
-                optionsEl.appendChild(button);
-            });
-            
-            // Случайный эффект
+        // Изменение фона
+        function changeBackground() {
             if (Math.random() > 0.7) {
-                contentEl.classList.add('glitch-effect');
-                setTimeout(() => contentEl.classList.remove('glitch-effect'), 1000);
-            }
-        }
-        
-        // Создание скрытых интерактивных элементов
-        function createHiddenElements() {
-            for (let i = 0; i < 5; i++) {
-                const hiddenEl = document.createElement('div');
-                hiddenEl.className = 'hidden-element';
-                hiddenEl.style.top = `${Math.random() * 90}%`;
-                hiddenEl.style.left = `${Math.random() * 90}%`;
-                document.body.appendChild(hiddenEl);
-            }
-        }
-        
-        // Обработка клика на скрытый элемент
-        function handleHiddenElementClick(e) {
-            state.existentialLevel++;
-            playSound(glitchSound);
-            
-            // Эффект глитча
-            triggerGlitch();
-            
-            // Случайное сообщение
-            showMessage(messages[Math.floor(Math.random() * messages.length)]);
-            
-            // Перемещение элемента
-            e.target.style.top = `${Math.random() * 90}%`;
-            e.target.style.left = `${Math.random() * 90}%`;
-            
-            // Случайное изменение счетчика
-            state.interactionCount += Math.floor(Math.random() * 100);
-            updateCounter();
-            
-            // Случайное появление дополнительного контента
-            if (Math.random() > 0.8) {
-                showSecretContent();
+                document.body.style.backgroundColor = `hsl(${Math.random() * 360}, 30%, 10%)`;
+                setTimeout(() => {
+                    document.body.style.backgroundColor = '#000';
+                }, 5000);
             }
         }
         
@@ -480,10 +594,10 @@
         function handleTouch(e) {
             // Случайный эффект при касании
             if (Math.random() > 0.7) {
-                document.body.style.backgroundColor = getRandomColor();
+                document.body.style.backgroundColor = `hsl(${Math.random() * 360}, 50%, 20%)`;
                 setTimeout(() => {
                     document.body.style.backgroundColor = '#000';
-                }, 500);
+                }, 1000);
             }
             
             // Случайное воспроизведение звука
@@ -492,72 +606,22 @@
             }
         }
         
-        // Случайный глитч-эффект
-        function randomGlitch() {
-            if (Math.random() > 0.5) {
+        // Случайные эффекты при клике
+        function handleRandomEffect(e) {
+            if (e.target.className !== 'option' && e.target.className !== 'floating-text' && 
+                e.target.className !== 'hidden-element' && Math.random() > 0.8) {
                 triggerGlitch();
+                state.interactionCount++;
+                updateCounter();
             }
         }
         
-        // Запуск эффекта глитча
-        function triggerGlitch() {
-            playSound(glitchSound);
-            contentEl.classList.add('glitch-effect');
-            document.body.style.overflow = 'hidden';
-            
-            setTimeout(() => {
-                contentEl.classList.remove('glitch-effect');
-                document.body.style.overflow = 'auto';
-            }, 1000);
-        }
-        
-        // Показать случайное сообщение
-        function showRandomMessage() {
-            if (Math.random() > 0.5) {
-                const message = messages[Math.floor(Math.random() * messages.length)];
-                showMessage(message);
-            }
-        }
-        
-        // Показать сообщение
-        function showMessage(text) {
-            const messageEl = document.createElement('div');
-            messageEl.className = 'message';
-            messageEl.textContent = text;
-            messageEl.style.left = `${Math.random() * 80}%`;
-            messageEl.style.color = getRandomColor();
-            document.body.appendChild(messageEl);
-            
-            setTimeout(() => {
-                document.body.removeChild(messageEl);
-            }, 10000);
-        }
-        
-        // Показать секретный контент
-        function showSecretContent() {
-            const secretContent = document.createElement('div');
-            secretContent.innerHTML = `
-                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 1000; display: flex; justify-content: center; align-items: center; flex-direction: column;">
-                    <h2>Ты нашел скрытое послание</h2>
-                    <p>Возможно, это знак</p>
-                    <p>Или просто случайность</p>
-                    <button id="close-secret" style="margin-top: 20px; padding: 10px 20px;">Вернуться</button>
-                </div>
-            `;
-            document.body.appendChild(secretContent);
-            
-            document.getElementById('close-secret').addEventListener('click', function() {
-                document.body.removeChild(secretContent);
-            });
-        }
-        
-        // Случайное изменение фона
-        function randomBackgroundShift() {
+        // Перенаправление на случайный сайт
+        function redirectToRandomSite() {
             if (Math.random() > 0.7) {
-                document.body.style.backgroundColor = getRandomColor();
                 setTimeout(() => {
-                    document.body.style.backgroundColor = '#000';
-                }, 5000);
+                    window.open(CONFIG.externalLinks[Math.floor(Math.random() * CONFIG.externalLinks.length)], '_blank');
+                }, 1000);
             }
         }
         
@@ -584,16 +648,6 @@
             sound.currentTime = 0;
             sound.volume = 0.7;
             sound.play().catch(e => console.log("Не удалось воспроизвести звук"));
-        }
-        
-        // Получить случайный цвет
-        function getRandomColor() {
-            const letters = '0123456789ABCDEF';
-            let color = '#';
-            for (let i = 0; i < 6; i++) {
-                color += letters[Math.floor(Math.random() * 16)];
-            }
-            return color;
         }
         
         // Перемешать массив
