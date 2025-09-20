@@ -2,243 +2,611 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Тараканчик</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Экзистенциальный опыт</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            /* Убирает синее выделение при тапе на мобильных */
+            font-family: 'Courier New', monospace;
+            transition: all 0.5s ease;
         }
-
+        
         body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #6e8efb, #a777e3);
-            /* Красиый градиентный фон */
-            color: white;
-            height: 100vh;
-            /* На весь экран */
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            text-align: center;
+            background-color: #000;
+            color: #fff;
             overflow: hidden;
-            /* Чтобы ничего не вылезало за экран */
-            touch-action: manipulation;
-            /* Отключает масштабирование на тачскринах */
+            height: 100vh;
+            cursor: none;
         }
-
-        .header {
-            padding: 10px;
-        }
-
-        .score-container {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        #score {
-            font-weight: bold;
-            font-size: 32px;
-        }
-
-        .timer-container {
-            font-size: 20px;
-        }
-
-        #timer {
-            font-weight: bold;
-        }
-
-        .game-area {
-            flex-grow: 1;
-            /* Занимает все оставшееся место */
+        
+        #content {
             position: relative;
             width: 100%;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-
-        #target {
-            position: absolute;
-            width: 70px;
-            height: 70px;
-            background-color: #ff4757;
-            /* Красный кружок */
-            border-radius: 50%;
-            /* Делаем его круглым */
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-            /* Центрируем по координатам */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            /* Тень для объема */
+            height: 100%;
+            padding: 20px;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: center;
-            user-select: none;
-            /* Чтобы текст внутри не выделялся */
+            align-items: center;
+            text-align: center;
+            z-index: 10;
         }
-
-        #start-btn {
-            background-color: #2ed573;
-            /* Зеленая кнопка */
-            border: none;
-            border-radius: 50px;
-            padding: 15px 30px;
+        
+        .hidden-element {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: transparent;
+            z-index: 100;
+        }
+        
+        .question {
+            font-size: 24px;
+            margin-bottom: 30px;
+            max-width: 80%;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+        
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        
+        .option {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
             font-size: 18px;
-            font-weight: bold;
-            margin: 15px 0;
             cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
         }
-
-        #start-btn:active {
-            transform: scale(0.98);
-            /* Эффект нажатия */
+        
+        .option:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
-
-        .instructions {
+        
+        .glitch-effect {
+            animation: glitch 0.3s linear infinite;
+        }
+        
+        @keyframes glitch {
+            0% {
+                transform: translate(0);
+                filter: hue-rotate(0deg);
+            }
+            20% {
+                transform: translate(-5px, 5px);
+                filter: hue-rotate(90deg);
+            }
+            40% {
+                transform: translate(-5px, -5px);
+                filter: hue-rotate(180deg);
+            }
+            60% {
+                transform: translate(5px, 5px);
+                filter: hue-rotate(270deg);
+            }
+            80% {
+                transform: translate(5px, -5px);
+                filter: hue-rotate(300deg);
+            }
+            100% {
+                transform: translate(0);
+                filter: hue-rotate(360deg);
+            }
+        }
+        
+        .fade-effect {
+            animation: fade 3s linear forwards;
+        }
+        
+        @keyframes fade {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        .blur-effect {
+            animation: blur 5s linear forwards;
+        }
+        
+        @keyframes blur {
+            0% { filter: blur(0px); }
+            100% { filter: blur(10px); }
+        }
+        
+        .counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        
+        .secret-code {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 10px;
+            opacity: 0.1;
+        }
+        
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .message {
+            position: absolute;
             font-size: 14px;
-            opacity: 0.8;
-            margin-top: 10px;
+            opacity: 0;
+            animation: float 10s linear forwards;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7;
+            }
+            90% {
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-100vh);
+                opacity: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="score-container">Счет: <span id="score">0</span></div>
-        <div class="timer-container">Время: <span id="timer">30</span> сек.</div>
+    <div class="noise"></div>
+    <div id="content">
+        <div class="question" id="question">Зачем ты здесь?</div>
+        <div class="options" id="options">
+            <button class="option" data-next="1">Я ищу смысл</button>
+            <button class="option" data-next="2">Случайно оказался</button>
+            <button class="option" data-next="3">Кто ты такой, чтобы спрашивать?</button>
+            <button class="option" data-next="4">...</button>
+        </div>
     </div>
+    <div class="counter" id="counter">0000</div>
+    <div class="secret-code" id="secret-code">42</div>
 
-    <div class="game-area" id="gameArea">
-        <!-- Сюда JS будет помещать цель -->
-        <div id="target"></div>
-    </div>
-
-    <div>
-        <button id="start-btn">НАЧАТЬ ИГРУ</button>
-        <p class="instructions">Жми на кружок, как можно быстрее!</p>
-    </div>
+    <audio id="bgMusic" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-ambient-basic-loop-315.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="glitchSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-glitch-static-568.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="clickSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
-        // === НАСТРОЙКИ ИГРЫ ===
-        const gameDuration = 30; // Длительность игры в секундах
-        let score = 0; // Текущий счет
-        let timeLeft = gameDuration; // Оставшееся время
-        let gameInterval; // Интервал для таймера
-        let targetInterval; // Интервал для появления целей
-        let isGameActive = false; // Активна ли игра сейчас
-
-        // Получаем элементы со страницы по их ID
-        const scoreElement = document.getElementById('score');
-        const timerElement = document.getElementById('timer');
-        const targetElement = document.getElementById('target');
-        const startButton = document.getElementById('start-btn');
-        const gameArea = document.getElementById('gameArea');
-
-        // === ФУНКЦИЯ СЛУЧАЙНОЙ ПОЗИЦИИ ===
-        // Генерирует случайные координаты в пределах игровой области
-        function getRandomPosition() {
-            // Получаем размеры игровой области
-            const gameRect = gameArea.getBoundingClientRect();
-            // Вычитаем размеры самой цели, чтобы она не выходила за границы
-            const maxX = gameRect.width - targetElement.offsetWidth;
-            const maxY = gameRect.height - targetElement.offsetHeight;
-            // Возвращаем случайные координаты
-            return {
-                x: Math.floor(Math.random() * maxX),
-                y: Math.floor(Math.random() * maxY)
-            };
+        // Элементы DOM
+        const contentEl = document.getElementById('content');
+        const questionEl = document.getElementById('question');
+        const optionsEl = document.getElementById('options');
+        const counterEl = document.getElementById('counter');
+        const secretCodeEl = document.getElementById('secret-code');
+        const bgMusic = document.getElementById('bgMusic');
+        const glitchSound = document.getElementById('glitchSound');
+        const clickSound = document.getElementById('clickSound');
+        
+        // Состояние
+        let state = {
+            existentialLevel: 0,
+            interactionCount: 0,
+            hiddenParameter: Math.floor(Math.random() * 100),
+            hasSeenTruth: false,
+            glitchMode: false
+        };
+        
+        // Вопросы и ответы
+        const questions = [
+            {
+                id: 0,
+                text: "Зачем ты здесь?",
+                options: [
+                    { text: "Я ищу смысл", next: 1 },
+                    { text: "Случайно оказался", next: 2 },
+                    { text: "Кто ты такой, чтобы спрашивать?", next: 3 },
+                    { text: "...", next: 4 }
+                ]
+            },
+            {
+                id: 1,
+                text: "Как ты думаешь, существует ли объективная реальность?",
+                options: [
+                    { text: "Да, конечно", next: 5 },
+                    { text: "Нет, всё субъективно", next: 6 },
+                    { text: "Не знаю", next: 7 },
+                    { text: "Реальность - это иллюзия", next: 8 }
+                ]
+            },
+            {
+                id: 2,
+                text: "Случайность - это просто непознанная закономерность?",
+                options: [
+                    { text: "Да", next: 9 },
+                    { text: "Нет", next: 10 },
+                    { text: "Всё предопределено", next: 11 },
+                    { text: "Случайность не существует", next: 12 }
+                ]
+            },
+            {
+                id: 3,
+                text: "Ты действительно хочешь знать кто я?",
+                options: [
+                    { text: "Да", next: 13 },
+                    { text: "Нет", next: 14 },
+                    { text: "Мне всё равно", next: 15 },
+                    { text: "Ты - это я", next: 16 }
+                ]
+            },
+            {
+                id: 4,
+                text: "Молчание - это ответ?",
+                options: [
+                    { text: "Да", next: 17 },
+                    { text: "Нет", next: 18 },
+                    { text: "Иногда", next: 19 },
+                    { text: "...", next: 20 }
+                ]
+            },
+            // Дополнительные вопросы...
+            {
+                id: 99,
+                text: "Достигнув конца, ты понимаешь, что это только начало?",
+                options: [
+                    { text: "Начать заново", next: 0 },
+                    { text: "Остаться здесь", next: 99 },
+                    { text: "Выйти", next: 100 },
+                    { text: "Погрузиться глубже", next: 101 }
+                ]
+            }
+        ];
+        
+        // Ссылки на внешние ресурсы
+        const externalLinks = [
+            "https://ru.wikipedia.org/wiki/Солипсизм",
+            "https://ru.wikipedia.org/wiki/Экзистенциализм",
+            "https://ru.wikipedia.org/wiki/Теория_симуляции",
+            "https://ru.wikipedia.org/wiki/Философский_зомби",
+            "https://ru.wikipedia.org/wiki/Когнитивная_наука",
+            "https://plato.stanford.edu/entries/time/",
+            "https://www.britannica.com/topic/consciousness",
+            "https://iep.utm.edu/freedom/",
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ", // Rick Astley - Never Gonna Give You Up
+            "https://www.youtube.com/watch?v=W8AehDshvqI"  // Секретный философский ролик
+        ];
+        
+        // Цитаты и сообщения
+        const messages = [
+            "Ты действительно свободен?",
+            "42",
+            "Что если ничего не имеет значения?",
+            "Сознание - это иллюзия?",
+            "Твои решения действительно твои?",
+            "Время линейно?",
+            "Мы одни во вселенной?",
+            "Смысл жизни в том, чтобы найти смысл?",
+            "Всё уже было раньше",
+            "Реальность превыше фантазии",
+            "Ты спишь?",
+            "Проснись"
+        ];
+        
+        // Инициализация
+        function init() {
+            updateCounter();
+            createHiddenElements();
+            playMusic();
+            setInterval(updateCounter, 30000);
+            setInterval(showRandomMessage, 15000);
+            setInterval(randomGlitch, 10000);
+            
+            // Обработчики событий для опций
+            optionsEl.addEventListener('click', function(e) {
+                if (e.target.classList.contains('option')) {
+                    handleOptionClick(e.target);
+                }
+            });
+            
+            // Обработчики для скрытых элементов
+            document.querySelectorAll('.hidden-element').forEach(el => {
+                el.addEventListener('click', handleHiddenElementClick);
+            });
+            
+            // Сенсорная поддержка
+            document.addEventListener('touchstart', handleTouch, { passive: false });
+            
+            // Случайное изменение цвета фона
+            setInterval(randomBackgroundShift, 20000);
         }
-
-        // === ФУНКЦИЯ ПЕРЕМЕЩЕНИЯ ЦЕЛИ ===
-        function moveTarget() {
-            const newPos = getRandomPosition(); // Получаем новую позицию
-            // Устанавливаем новые координаты для цели
-            targetElement.style.left = newPos.x + 'px';
-            targetElement.style.top = newPos.y + 'px';
-        }
-
-        // === ФУНКЦИЯ ОБНОВЛЕНИЯ ТАЙМЕРА ===
-        function updateTimer() {
-            timeLeft--; // Уменьшаем оставшееся время на 1 секунду
-            timerElement.textContent = timeLeft; // Обновляем текст на экране
-
-            // Если время вышло
-            if (timeLeft <= 0) {
-                endGame(); // Завершаем игру
+        
+        // Обновление счетчика
+        function updateCounter() {
+            state.interactionCount += Math.floor(Math.random() * 7);
+            const countStr = state.interactionCount.toString().padStart(4, '0');
+            counterEl.textContent = countStr;
+            
+            // Случайное изменение счетчика
+            if (Math.random() > 0.7) {
+                counterEl.classList.add('glitch-effect');
+                setTimeout(() => counterEl.classList.remove('glitch-effect'), 1000);
             }
         }
-
-        // === ФУНКЦИЯ НАЧАЛА ИГРЫ ===
-        function startGame() {
-            if (isGameActive) return; // Если игра уже идет, ничего не делаем
-
-            isGameActive = true; // Устанавливаем флаг активной игры
-            score = 0; // Сбрасываем счет
-            timeLeft = gameDuration; // Сбрасываем таймер
-            scoreElement.textContent = score; // Обновляем счет на экране
-            timerElement.textContent = timeLeft; // Обновляем таймер на экране
-            startButton.textContent = "ИДЕТ ИГРА..."; // Меняем текст кнопки
-            startButton.disabled = true; // Делаем кнопку неактивной
-            startButton.style.backgroundColor = "#7bed9f"; // Меняем цвет кнопки
-
-            // Запускаем таймер: функция updateTimer будет вызываться каждую секунду (1000 мс)
-            gameInterval = setInterval(updateTimer, 1000);
-            // Запускаем перемещение цели: функция moveTarget будет вызываться каждые 800 мс
-            targetInterval = setInterval(moveTarget, 800);
-
-            // Сразу перемещаем цель в случайную позицию
-            moveTarget();
-            // Показываем цель (на всякий случай)
-            targetElement.style.display = 'flex';
+        
+        // Обработка выбора опции
+        function handleOptionClick(optionEl) {
+            playSound(clickSound);
+            state.interactionCount++;
+            
+            // Случайный глитч при выборе
+            if (Math.random() > 0.8) {
+                triggerGlitch();
+                
+                // Случайное открытие внешней ссылки
+                if (Math.random() > 0.9) {
+                    setTimeout(() => {
+                        window.open(externalLinks[Math.floor(Math.random() * externalLinks.length)], '_blank');
+                    }, 1000);
+                }
+            }
+            
+            const nextQuestionId = parseInt(optionEl.getAttribute('data-next'));
+            loadQuestion(nextQuestionId);
+            
+            // Случайное исчезновение кнопок
+            if (Math.random() > 0.7) {
+                setTimeout(() => {
+                    optionEl.style.opacity = '0';
+                    optionEl.style.pointerEvents = 'none';
+                    
+                    // Восстановление через некоторое время
+                    setTimeout(() => {
+                        optionEl.style.opacity = '1';
+                        optionEl.style.pointerEvents = 'auto';
+                    }, 3000);
+                }, 500);
+            }
+            
+            updateCounter();
         }
-
-        // === ФУНКЦИЯ ЗАВЕРШЕНИЯ ИГРЫ ===
-        function endGame() {
-            isGameActive = false; // Сбрасываем флаг активной игры
-
-            // Останавливаем все интервалы
-            clearInterval(gameInterval);
-            clearInterval(targetInterval);
-
-            // Восстанавливаем кнопку старта
-            startButton.textContent = "ИГРАТЬ ЕЩЕ";
-            startButton.disabled = false;
-            startButton.style.backgroundColor = "#2ed573";
-
-            // Показываем итоговый счет
-            alert(`Игра окончена!\nВаш счет: ${score}`);
-            // Прячем цель
-            targetElement.style.display = 'none';
+        
+        // Загрузка вопроса
+        function loadQuestion(questionId) {
+            // Случайное изменение порядка вопросов
+            if (Math.random() > 0.9) {
+                questionId = Math.floor(Math.random() * questions.length);
+            }
+            
+            const question = questions.find(q => q.id === questionId) || questions[0];
+            
+            questionEl.textContent = question.text;
+            
+            // Очистка опций
+            optionsEl.innerHTML = '';
+            
+            // Добавление новых опций (иногда в случайном порядке)
+            const options = [...question.options];
+            if (Math.random() > 0.6) {
+                shuffleArray(options);
+            }
+            
+            options.forEach(opt => {
+                const button = document.createElement('button');
+                button.className = 'option';
+                button.textContent = opt.text;
+                button.setAttribute('data-next', opt.next);
+                
+                // Случайное скрытие некоторых кнопок
+                if (Math.random() > 0.8) {
+                    button.style.opacity = '0';
+                    button.style.pointerEvents = 'none';
+                    
+                    // Появление через некоторое время
+                    setTimeout(() => {
+                        button.style.opacity = '1';
+                        button.style.pointerEvents = 'auto';
+                    }, 2000);
+                }
+                
+                optionsEl.appendChild(button);
+            });
+            
+            // Случайный эффект
+            if (Math.random() > 0.7) {
+                contentEl.classList.add('glitch-effect');
+                setTimeout(() => contentEl.classList.remove('glitch-effect'), 1000);
+            }
         }
-
-        // === ОБРАБОТЧИК СОБЫТИЙ ===
-        // Обработчик клика (тапа) по цели
-        targetElement.addEventListener('click', function () {
-            if (!isGameActive) return; // Если игра не активна, ничего не делаем
-
-            score++; // Увеличиваем счет на 1
-            scoreElement.textContent = score; // Обновляем счет на экране
-
-            // Сразу перемещаем цель в новое место
-            moveTarget();
-        });
-
-        // Обработчик клика (тапа) по кнопке старта
-        startButton.addEventListener('click', startGame);
-
-        // На маленьких экранах немного уменьшаем размер цели
-        if (window.innerWidth < 768) {
-            targetElement.style.width = '60px';
-            targetElement.style.height = '60px';
+        
+        // Создание скрытых интерактивных элементов
+        function createHiddenElements() {
+            for (let i = 0; i < 5; i++) {
+                const hiddenEl = document.createElement('div');
+                hiddenEl.className = 'hidden-element';
+                hiddenEl.style.top = `${Math.random() * 90}%`;
+                hiddenEl.style.left = `${Math.random() * 90}%`;
+                document.body.appendChild(hiddenEl);
+            }
         }
+        
+        // Обработка клика на скрытый элемент
+        function handleHiddenElementClick(e) {
+            state.existentialLevel++;
+            playSound(glitchSound);
+            
+            // Эффект глитча
+            triggerGlitch();
+            
+            // Случайное сообщение
+            showMessage(messages[Math.floor(Math.random() * messages.length)]);
+            
+            // Перемещение элемента
+            e.target.style.top = `${Math.random() * 90}%`;
+            e.target.style.left = `${Math.random() * 90}%`;
+            
+            // Случайное изменение счетчика
+            state.interactionCount += Math.floor(Math.random() * 100);
+            updateCounter();
+            
+            // Случайное появление дополнительного контента
+            if (Math.random() > 0.8) {
+                showSecretContent();
+            }
+        }
+        
+        // Обработка касаний
+        function handleTouch(e) {
+            // Случайный эффект при касании
+            if (Math.random() > 0.7) {
+                document.body.style.backgroundColor = getRandomColor();
+                setTimeout(() => {
+                    document.body.style.backgroundColor = '#000';
+                }, 500);
+            }
+            
+            // Случайное воспроизведение звука
+            if (Math.random() > 0.8) {
+                playSound(glitchSound);
+            }
+        }
+        
+        // Случайный глитч-эффект
+        function randomGlitch() {
+            if (Math.random() > 0.5) {
+                triggerGlitch();
+            }
+        }
+        
+        // Запуск эффекта глитча
+        function triggerGlitch() {
+            playSound(glitchSound);
+            contentEl.classList.add('glitch-effect');
+            document.body.style.overflow = 'hidden';
+            
+            setTimeout(() => {
+                contentEl.classList.remove('glitch-effect');
+                document.body.style.overflow = 'auto';
+            }, 1000);
+        }
+        
+        // Показать случайное сообщение
+        function showRandomMessage() {
+            if (Math.random() > 0.5) {
+                const message = messages[Math.floor(Math.random() * messages.length)];
+                showMessage(message);
+            }
+        }
+        
+        // Показать сообщение
+        function showMessage(text) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message';
+            messageEl.textContent = text;
+            messageEl.style.left = `${Math.random() * 80}%`;
+            messageEl.style.color = getRandomColor();
+            document.body.appendChild(messageEl);
+            
+            setTimeout(() => {
+                document.body.removeChild(messageEl);
+            }, 10000);
+        }
+        
+        // Показать секретный контент
+        function showSecretContent() {
+            const secretContent = document.createElement('div');
+            secretContent.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 1000; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+                    <h2>Ты нашел скрытое послание</h2>
+                    <p>Возможно, это знак</p>
+                    <p>Или просто случайность</p>
+                    <button id="close-secret" style="margin-top: 20px; padding: 10px 20px;">Вернуться</button>
+                </div>
+            `;
+            document.body.appendChild(secretContent);
+            
+            document.getElementById('close-secret').addEventListener('click', function() {
+                document.body.removeChild(secretContent);
+            });
+        }
+        
+        // Случайное изменение фона
+        function randomBackgroundShift() {
+            if (Math.random() > 0.7) {
+                document.body.style.backgroundColor = getRandomColor();
+                setTimeout(() => {
+                    document.body.style.backgroundColor = '#000';
+                }, 5000);
+            }
+        }
+        
+        // Воспроизведение музыки
+        function playMusic() {
+            bgMusic.volume = 0.3;
+            bgMusic.play().catch(e => {
+                console.log("Автовоспроизведение заблокировано. Для полного опыта разрешите звук.");
+            });
+            
+            // Случайные изменения громкости
+            setInterval(() => {
+                if (Math.random() > 0.8) {
+                    bgMusic.volume = Math.random() * 0.5;
+                    setTimeout(() => {
+                        bgMusic.volume = 0.3;
+                    }, 3000);
+                }
+            }, 10000);
+        }
+        
+        // Воспроизведение звука
+        function playSound(sound) {
+            sound.currentTime = 0;
+            sound.volume = 0.7;
+            sound.play().catch(e => console.log("Не удалось воспроизвести звук"));
+        }
+        
+        // Получить случайный цвет
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        
+        // Перемешать массив
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        
+        // Запуск при загрузке
+        window.addEventListener('load', init);
     </script>
 </body>
 </html>
