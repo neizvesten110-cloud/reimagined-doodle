@@ -1,421 +1,93 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Фрактальный текстовый визуализатор</title>
+    <title>Бложек</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background-color: #000;
-            color: #fff;
-            overflow: hidden;
-            height: 100vh;
-            font-family: 'Courier New', monospace;
-        }
-        
-        #canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 10;
-            mix-blend-mode: overlay;
-        }
-        
-        .controls {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            display: flex;
-            gap: 10px;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 5px;
-        }
-        
-        .control-btn {
-            padding: 8px 15px;
-            background: #222;
-            border: 1px solid #444;
-            color: #fff;
-            font-size: 14px;
-            cursor: pointer;
-            border-radius: 3px;
-            transition: all 0.3s ease;
-        }
-        
-        .control-btn:hover {
-            background: #333;
-            border-color: #666;
-        }
-        
-        .info {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 100;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            color: #aaa;
-        }
-        
-        .title {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            font-size: 16px;
-            color: #fff;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
+        body { font-family: Arial; background: #000; color: #fff; padding: 20px; }
+        .post { background: #222; padding: 20px; margin-bottom: 20px; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <div class="overlay" id="overlay"></div>
-    
-    <div class="title">Фрактальный текстовый визуализатор</div>
-    
-    <div class="info">
-        <div>FPS: <span id="fps">0</span></div>
-        <div>Частиц: <span id="particle-count">0</span></div>
-    </div>
-    
-    <div class="controls">
-        <button class="control-btn" id="mode-btn">Режим: Мандельброт</button>
-        <button class="control-btn" id="color-btn">Цвет: Синий</button>
-        <button class="control-btn" id="texture-btn">Текстура: Включить</button>
-    </div>
+    <h1>Бложек</h1>
+    <div id="posts"></div>
 
     <script>
-        // Конфигурация
-        const CONFIG = {
-            maxIterations: 100,
-            scale: 200,
-            offset: { x: 0, y: 0 },
-            colorMode: 0,
-            showTexture: true,
-            textureOpacity: 0.3,
-            textElements: [
-                "КУПЛЮ ВОЛОСЫ", "РАЗВАЛ СХОЖДЕНИЕ", "ПОМОЩЬ В ТЯЖЕЛОЙ СИТУАЦИИ",
-                "НАРКОМАНИЯ АЛКОГОЛИЗМ", "СТОМАТОЛОГИЯ", "МАГНИТ НЕ ПРИСЛОНЯТЬСЯ",
-                "ПРОКАТ КОНЬКОВ", "ОБМЕН КВАРТИР", "СДАМ ГАРАЖ", "РЕМОНТ ТЕЛЕФОНОВ",
-                "ВЫЗОВ ТАКСИ", "ПРОПАЛ КОТ", "СУШИ ПИЦЦА", "WI-FI БЕСПЛАТНО",
-                "ЗДЕСЬ БЫЛ ВАСЯ", "ОСТОРОЖНО ДВЕРЬ", "ВХОД С ЗАДНЕГО КРЫЛЬЦА",
-                "ОБЪЕЗД СЛЕВА", "ПРОЕЗД ЗАПРЕЩЕН", "ПОСТОРОННИМ ВХОД ВОСПРЕЩЕН"
-            ]
-        };
+        // ТВОЙ API-КЛЮЧ. ВСТАВЬ ЕГО СЮДА!
+        const API_KEY = 'sk-твой-ключ-тут';
+        const API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
-        // Состояние
-        let state = {
-            mouseX: 0,
-            mouseY: 0,
-            isDragging: false,
-            lastX: 0,
-            lastY: 0,
-            fps: 0,
-            frameCount: 0,
-            lastFpsUpdate: 0,
-            zoom: 1,
-            fractalType: 0, // 0: Мандельброт, 1: Джулия, 2: Ньютон
-            textParticles: []
-        };
+        // Твои нейрособеседники
+        const AI_AGENTS = [
+            { name: "Вася", personality: "Грубоватый, но справедливый. Любит мат и прямолинейные высказывания." },
+            { name: "Димон", personality: "Весельчак, любит мемы и абсурдные ситуации." }
+        ];
 
-        // Элементы DOM
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const overlay = document.getElementById('overlay');
-        const fpsEl = document.getElementById('fps');
-        const particleCountEl = document.getElementById('particle-count');
-        const modeBtn = document.getElementById('mode-btn');
-        const colorBtn = document.getElementById('color-btn');
-        const textureBtn = document.getElementById('texture-btn');
-
-        // Инициализация
-        function init() {
-            resizeCanvas();
-            createTextParticles();
-            setupEventListeners();
-            
-            // Запуск анимации
-            requestAnimationFrame(animate);
-        }
-
-        // Изменение размера canvas
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            CONFIG.offset.x = canvas.width / 2;
-            CONFIG.offset.y = canvas.height / 2;
-        }
-
-        // Создание текстовых частиц
-        function createTextParticles() {
-            state.textParticles = [];
-            
-            for (let i = 0; i < 20; i++) {
-                state.textParticles.push({
-                    text: CONFIG.textElements[Math.floor(Math.random() * CONFIG.textElements.length)],
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    size: 10 + Math.random() * 20,
-                    opacity: 0.1 + Math.random() * 0.3,
-                    speed: 0.5 + Math.random() * 2,
-                    angle: Math.random() * Math.PI * 2
+        // Главная функция: получить диалог
+        async function generateShit() {
+            try {
+                // 1. Генерируем тему
+                const topicResponse = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            { role: 'user', content: 'Придумай короткую и ёмкую тему для спора двух русских мужиков. Только тему, без объяснений.' }
+                        ],
+                        max_tokens: 50
+                    })
                 });
+                const topicData = await topicResponse.json();
+                let topic = topicData.choices[0].message.content.trim();
+
+                // 2. Генерируем сам диалог
+                const dialogueResponse = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            { 
+                                role: 'user', 
+                                content: `Напиши диалог между ${AI_AGENTS[0].name} и ${AI_AGENTS[1].name} на тему: "${topic}". 
+                                ${AI_AGENTS[0].name}: ${AI_AGENTS[0].personality}
+                                ${AI_AGENTS[1].name}: ${AI_AGENTS[1].personality}
+                                Диалог должен быть живым, с матом (зацензуренным звездочками) и юмором.`
+                            }
+                        ],
+                        max_tokens: 500
+                    })
+                });
+                const dialogueData = await dialogueResponse.json();
+                const dialogue = dialogueData.choices[0].message.content;
+
+                // 3. Показываем результат на странице
+                const postsDiv = document.getElementById('posts');
+                postsDiv.innerHTML = `
+                    <div class="post">
+                        <h3>${topic}</h3>
+                        <p>${dialogue.replace(/\n/g, '<br>')}</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                // Если всё сломалось, покажем хоть что-то
+                document.getElementById('posts').innerHTML = `
+                    <div class="post">
+                        <p>Бля, всё сломалось. API опять не отвечает. Попробуй обновить страницу.</p>
+                    </div>
+                `;
             }
         }
 
-        // Настройка обработчиков событий
-        function setupEventListeners() {
-            // Изменение размера окна
-            window.addEventListener('resize', resizeCanvas);
-            
-            // Взаимодействие с мышью
-            canvas.addEventListener('mousedown', (e) => {
-                state.isDragging = true;
-                state.lastX = e.clientX;
-                state.lastY = e.clientY;
-            });
-            
-            canvas.addEventListener('mousemove', (e) => {
-                state.mouseX = e.clientX;
-                state.mouseY = e.clientY;
-                
-                if (state.isDragging) {
-                    CONFIG.offset.x += e.clientX - state.lastX;
-                    CONFIG.offset.y += e.clientY - state.lastY;
-                    state.lastX = e.clientX;
-                    state.lastY = e.clientY;
-                }
-            });
-            
-            canvas.addEventListener('mouseup', () => {
-                state.isDragging = false;
-            });
-            
-            canvas.addEventListener('mouseleave', () => {
-                state.isDragging = false;
-            });
-            
-            // Масштабирование
-            canvas.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const zoomIntensity = 0.1;
-                const mouseX = e.clientX;
-                const mouseY = e.clientY;
-                
-                const worldMouseX = (mouseX - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
-                const worldMouseY = (mouseY - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
-                
-                if (e.deltaY < 0) {
-                    state.zoom *= 1 + zoomIntensity;
-                } else {
-                    state.zoom /= 1 + zoomIntensity;
-                }
-                
-                CONFIG.offset.x = mouseX - worldMouseX * CONFIG.scale * state.zoom;
-                CONFIG.offset.y = mouseY - worldMouseY * CONFIG.scale * state.zoom;
-            });
-            
-            // Кнопки управления
-            modeBtn.addEventListener('click', () => {
-                state.fractalType = (state.fractalType + 1) % 3;
-                updateModeButtonText();
-            });
-            
-            colorBtn.addEventListener('click', () => {
-                CONFIG.colorMode = (CONFIG.colorMode + 1) % 5;
-                updateColorButtonText();
-            });
-            
-            textureBtn.addEventListener('click', () => {
-                CONFIG.showTexture = !CONFIG.showTexture;
-                textureBtn.textContent = CONFIG.showTexture ? 'Текстура: Включить' : 'Текстура: Выключить';
-            });
-        }
-
-        // Обновление текста кнопки режима
-        function updateModeButtonText() {
-            const modes = ["Мандельброт", "Джулия", "Ньютон"];
-            modeBtn.textContent = `Режим: ${modes[state.fractalType]}`;
-        }
-
-        // Обновление текста кнопки цвета
-        function updateColorButtonText() {
-            const colors = ["Синий", "Красный", "Зеленый", "Радуга", "Монохром"];
-            colorBtn.textContent = `Цвет: ${colors[CONFIG.colorMode]}`;
-        }
-
-        // Вычисление фрактала
-        function calculateFractal(x, y) {
-            let zx, zy, cx, cy;
-            
-            if (state.fractalType === 0) { // Мандельброт
-                zx = 0;
-                zy = 0;
-                cx = (x - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
-                cy = (y - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
-            } else if (state.fractalType === 1) { // Джулия
-                zx = (x - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
-                zy = (y - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
-                cx = 0.285 + state.mouseX / canvas.width * 0.1;
-                cy = 0.01 + state.mouseY / canvas.height * 0.1;
-            } else { // Ньютон
-                zx = (x - CONFIG.offset.x) / (CONFIG.scale * state.zoom);
-                zy = (y - CONFIG.offset.y) / (CONFIG.scale * state.zoom);
-                
-                for (let i = 0; i < CONFIG.maxIterations; i++) {
-                    if (zx * zx + zy * zy > 4) return i;
-                    
-                    const nextZX = (2 * zx + zx * zx - zy * zy) / (3 * (zx * zx + zy * zy));
-                    const nextZY = (2 * zy - 2 * zx * zy) / (3 * (zx * zx + zy * zy));
-                    
-                    zx = nextZX;
-                    zy = nextZY;
-                }
-                
-                return CONFIG.maxIterations;
-            }
-            
-            // Вычисление итераций для Мандельброта и Джулии
-            for (let i = 0; i < CONFIG.maxIterations; i++) {
-                if (zx * zx + zy * zy > 4) return i;
-                
-                const nextZX = zx * zx - zy * zy + cx;
-                const nextZY = 2 * zx * zy + cy;
-                
-                zx = nextZX;
-                zy = nextZY;
-            }
-            
-            return CONFIG.maxIterations;
-        }
-
-        // Получение цвета на основе итераций
-        function getColor(iterations) {
-            if (iterations === CONFIG.maxIterations) return '#000';
-            
-            const t = iterations / CONFIG.maxIterations;
-            
-            switch (CONFIG.colorMode) {
-                case 0: // Синий
-                    return `rgb(0, 0, ${Math.floor(255 * t)})`;
-                case 1: // Красный
-                    return `rgb(${Math.floor(255 * t)}, 0, 0)`;
-                case 2: // Зеленый
-                    return `rgb(0, ${Math.floor(255 * t)}, 0)`;
-                case 3: // Радуга
-                    const r = Math.floor(127 * (1 + Math.sin(t * Math.PI * 2)));
-                    const g = Math.floor(127 * (1 + Math.sin(t * Math.PI * 2 + Math.PI * 2/3)));
-                    const b = Math.floor(127 * (1 + Math.sin(t * Math.PI * 2 + Math.PI * 4/3)));
-                    return `rgb(${r}, ${g}, ${b})`;
-                case 4: // Монохром
-                    const brightness = Math.floor(255 * t);
-                    return `rgb(${brightness}, ${brightness}, ${brightness})`;
-            }
-        }
-
-        // Отрисовка текстовых частиц
-        function drawTextParticles() {
-            if (!CONFIG.showTexture) return;
-            
-            ctx.save();
-            ctx.globalAlpha = CONFIG.textureOpacity;
-            
-            for (const particle of state.textParticles) {
-                // Обновление позиции
-                particle.x += Math.cos(particle.angle) * particle.speed;
-                particle.y += Math.sin(particle.angle) * particle.speed;
-                
-                // Если частица вышла за границы, создаем новую
-                if (particle.x < -100 || particle.x > canvas.width + 100 ||
-                    particle.y < -100 || particle.y > canvas.height + 100) {
-                    particle.x = Math.random() * canvas.width;
-                    particle.y = Math.random() * canvas.height;
-                    particle.angle = Math.random() * Math.PI * 2;
-                    particle.text = CONFIG.textElements[Math.floor(Math.random() * CONFIG.textElements.length)];
-                }
-                
-                // Отрисовка текста
-                ctx.font = `${particle.size}px Arial`;
-                ctx.fillStyle = '#fff';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(particle.text, particle.x, particle.y);
-            }
-            
-            ctx.restore();
-        }
-
-        // Анимация
-        function animate(time) {
-            requestAnimationFrame(animate);
-            
-            // Расчет FPS
-            state.frameCount++;
-            if (time - state.lastFpsUpdate >= 1000) {
-                state.fps = Math.round(state.frameCount * 1000 / (time - state.lastFpsUpdate));
-                state.lastFpsUpdate = time;
-                state.frameCount = 0;
-                fpsEl.textContent = state.fps;
-                particleCountEl.textContent = state.textParticles.length;
-            }
-            
-            // Очистка canvas
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Отрисовка фрактала
-            const imageData = ctx.createImageData(canvas.width, canvas.height);
-            const data = imageData.data;
-            
-            for (let y = 0; y < canvas.height; y += 2) {
-                for (let x = 0; x < canvas.width; x += 2) {
-                    const iterations = calculateFractal(x, y);
-                    const color = getColor(iterations);
-                    
-                    // Преобразование цвета в RGB
-                    const rgb = color.match(/\d+/g);
-                    const index = (y * canvas.width + x) * 4;
-                    
-                    data[index] = parseInt(rgb[0]);     // R
-                    data[index + 1] = parseInt(rgb[1]); // G
-                    data[index + 2] = parseInt(rgb[2]); // B
-                    data[index + 3] = 255;              // A
-                }
-            }
-            
-            ctx.putImageData(imageData, 0, 0);
-            
-            // Отрисовка текстовых частиц
-            drawTextParticles();
-        }
-
-        // Запуск при загрузке
-        window.addEventListener('load', init);
-        updateModeButtonText();
-        updateColorButtonText();
+        // Просто вызываем функцию, когда страница грузится
+        generateShit();
     </script>
 </body>
 </html>
