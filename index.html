@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Супер-простой бесконечный фрактал</title>
+    <title>Живые частицы</title>
     <style>
         body {
             margin: 0;
@@ -12,19 +12,34 @@
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
             background: #000;
+            font-family: Arial, sans-serif;
         }
         canvas {
             display: block;
         }
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 16px;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
     </style>
 </head>
 <body>
+    <div class="info">Касайтесь экрана для создания волн</div>
+    <canvas id="canvas"></canvas>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const canvas = document.createElement('canvas');
+            const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
-            document.body.appendChild(canvas);
             
+            // Установка размеров canvas
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
@@ -32,77 +47,131 @@
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
-            let scale = 1;
-            let offsetX = 0;
-            let offsetY = 0;
-            let isDragging = false;
-            let lastX, lastY, lastDistance;
+            // Массив частиц
+            const particles = [];
+            const maxParticles = 500; // Оптимизировано для мобильных
             
-            // Супер-простой бесконечный фрактал
-            function drawSimpleFractal() {
-                ctx.fillStyle = '#000';
+            // Создание частиц
+            function createParticles() {
+                for (let i = 0; i < maxParticles; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        size: Math.random() * 3 + 1,
+                        speedX: Math.random() * 2 - 1,
+                        speedY: Math.random() * 2 - 1,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        connections: []
+                    });
+                }
+            }
+            
+            // Отрисовка соединений между частицами
+            function drawConnections() {
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Рисуем линию, если частицы близко
+                        if (distance < 100) {
+                            const opacity = 1 - distance / 100;
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.3})`;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+            
+            // Отрисовка частиц
+            function drawParticles() {
+                for (const particle of particles) {
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fillStyle = particle.color;
+                    ctx.fill();
+                }
+            }
+            
+            // Обновление позиций частиц
+            function updateParticles() {
+                for (const particle of particles) {
+                    // Движение частиц
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+                    
+                    // Отскок от границ
+                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
+                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+                    
+                    // Случайные изменения направления
+                    if (Math.random() < 0.02) {
+                        particle.speedX += Math.random() * 0.5 - 0.25;
+                        particle.speedY += Math.random() * 0.5 - 0.25;
+                    }
+                    
+                    // Ограничение скорости
+                    const speed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY);
+                    if (speed > 2) {
+                        particle.speedX = (particle.speedX / speed) * 2;
+                        particle.speedY = (particle.speedY / speed) * 2;
+                    }
+                }
+            }
+            
+            // Создание волны при касании
+            function createWave(x, y) {
+                for (const particle of particles) {
+                    const dx = particle.x - x;
+                    const dy = particle.y - y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 150) {
+                        const force = 5 * (1 - distance / 150);
+                        const angle = Math.atan2(dy, dx);
+                        
+                        particle.speedX += Math.cos(angle) * force;
+                        particle.speedY += Math.sin(angle) * force;
+                    }
+                }
+            }
+            
+            // Основной цикл отрисовки
+            function animate() {
+                // Очистка canvas с полупрозрачным фоном для эффекта шлейфа
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                ctx.save();
-                ctx.translate(canvas.width/2 + offsetX, canvas.height/2 + offsetY);
-                ctx.scale(scale, scale);
+                // Обновление и отрисовка
+                updateParticles();
+                drawConnections();
+                drawParticles();
                 
-                // Рисуем простой рекурсивный узор
-                function drawPattern(x, y, size, depth) {
-                    if (depth <= 0 || size < 1) return;
-                    
-                    // Чередуем цвета
-                    ctx.fillStyle = depth % 2 === 0 ? '#f0f' : '#0ff';
-                    ctx.fillRect(x - size/2, y - size/2, size, size);
-                    
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(x - size/2, y - size/2, size, size);
-                    
-                    // Рекурсивно рисуем в углах
-                    const newSize = size / 2.5;
-                    drawPattern(x - size/2, y - size/2, newSize, depth - 1);
-                    drawPattern(x + size/2, y - size/2, newSize, depth - 1);
-                    drawPattern(x - size/2, y + size/2, newSize, depth - 1);
-                    drawPattern(x + size/2, y + size/2, newSize, depth - 1);
-                }
-                
-                drawPattern(0, 0, 200, 7);
-                ctx.restore();
-                
-                requestAnimationFrame(drawSimpleFractal);
+                requestAnimationFrame(animate);
             }
             
             // Обработка касаний
             canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault();
-                if (e.touches.length === 1) {
-                    isDragging = true;
-                    lastX = e.touches[0].clientX;
-                    lastY = e.touches[0].clientY;
-                }
+                const touch = e.touches[0];
+                createWave(touch.clientX, touch.clientY);
             });
             
             canvas.addEventListener('touchmove', function(e) {
                 e.preventDefault();
-                
-                if (e.touches.length === 1 && isDragging) {
-                    const touchX = e.touches[0].clientX;
-                    const touchY = e.touches[0].clientY;
-                    
-                    offsetX += (touchX - lastX) / scale;
-                    offsetY += (touchY - lastY) / scale;
-                    
-                    lastX = touchX;
-                    lastY = touchY;
-                } else if (e.touches.length === 2) {
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    
-                    const distance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    
-                    if (lastDistance !== undefined) {
-                        const zoomFactor = distance /
+                const touch = e.touches[0];
+                createWave(touch.clientX, touch.clientY);
+            });
+            
+            // Инициализация
+            createParticles();
+            animate();
+        });
+    </script>
+</body>
+</html>
