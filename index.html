@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Бесконечный 2D Фрактал</title>
+    <title>Супер-простой бесконечный фрактал</title>
     <style>
         body {
             margin: 0;
@@ -11,37 +11,20 @@
             overflow: hidden;
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
-            font-family: Arial, sans-serif;
             background: #000;
         }
         canvas {
             display: block;
         }
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: white;
-            font-size: 14px;
-            pointer-events: none;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-            padding: 0 20px;
-            z-index: 100;
-        }
     </style>
 </head>
 <body>
-    <div class="controls">Свайп для перемещения · Два пальца для масштабирования</div>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             document.body.appendChild(canvas);
             
-            // Установка размеров canvas
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
@@ -49,100 +32,45 @@
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
-            // Параметры фрактала
             let scale = 1;
             let offsetX = 0;
             let offsetY = 0;
             let isDragging = false;
-            let lastX, lastY;
+            let lastX, lastY, lastDistance;
             
-            // Простой бесконечный фрактал - треугольник Серпинского
-            function drawSierpinski(x, y, size, depth) {
-                if (depth === 0) return;
-                
-                // Рисуем треугольник
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(x + size, y);
-                ctx.lineTo(x + size / 2, y + size * Math.sqrt(3) / 2);
-                ctx.closePath();
-                
-                // Цвет в зависимости от глубины
-                const hue = (depth * 30) % 360;
-                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
-                ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                
-                // Рекурсивно рисуем меньшие треугольники
-                const newSize = size / 2;
-                drawSierpinski(x, y, newSize, depth - 1);
-                drawSierpinski(x + newSize, y, newSize, depth - 1);
-                drawSierpinski(x + newSize / 2, y + newSize * Math.sqrt(3) / 2, newSize, depth - 1);
-            }
-            
-            // Альтернатива: бесконечный квадратный фрактал
-            function drawSquareFractal(x, y, size, depth) {
-                if (depth <= 0) return;
-                
-                // Рисуем квадрат
-                ctx.fillStyle = `hsl(${depth * 20 % 360}, 80%, ${50 - depth * 3}%)`;
-                ctx.fillRect(x, y, size, size);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(x, y, size, size);
-                
-                // Рекурсивно рисуем меньшие квадраты в углах
-                const newSize = size / 3;
-                drawSquareFractal(x, y, newSize, depth - 1);
-                drawSquareFractal(x + size - newSize, y, newSize, depth - 1);
-                drawSquareFractal(x, y + size - newSize, newSize, depth - 1);
-                drawSquareFractal(x + size - newSize, y + size - newSize, newSize, depth - 1);
-            }
-            
-            // Еще более простой фрактал - круги в кругах
-            function drawCircleFractal(x, y, radius, depth) {
-                if (depth <= 0) return;
-                
-                // Рисуем круг
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fillStyle = `hsl(${depth * 45 % 360}, 80%, 60%)`;
-                ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Рекурсивно рисуем меньшие круги
-                const newRadius = radius / 2;
-                if (newRadius > 1) {
-                    drawCircleFractal(x - radius/2, y, newRadius, depth - 1);
-                    drawCircleFractal(x + radius/2, y, newRadius, depth - 1);
-                    drawCircleFractal(x, y - radius/2, newRadius, depth - 1);
-                    drawCircleFractal(x, y + radius/2, newRadius, depth - 1);
-                }
-            }
-            
-            // Функция отрисовки
-            function draw() {
+            // Супер-простой бесконечный фрактал
+            function drawSimpleFractal() {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Центрируем и масштабируем
                 ctx.save();
                 ctx.translate(canvas.width/2 + offsetX, canvas.height/2 + offsetY);
                 ctx.scale(scale, scale);
                 
-                // Рисуем фрактал (можно менять на другие функции)
-                const baseSize = 200;
-                drawSierpinski(-baseSize/2, -baseSize/2, baseSize, 6);
-                // drawSquareFractal(-baseSize/2, -baseSize/2, baseSize, 5);
-                // drawCircleFractal(0, 0, baseSize/2, 6);
+                // Рисуем простой рекурсивный узор
+                function drawPattern(x, y, size, depth) {
+                    if (depth <= 0 || size < 1) return;
+                    
+                    // Чередуем цвета
+                    ctx.fillStyle = depth % 2 === 0 ? '#f0f' : '#0ff';
+                    ctx.fillRect(x - size/2, y - size/2, size, size);
+                    
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x - size/2, y - size/2, size, size);
+                    
+                    // Рекурсивно рисуем в углах
+                    const newSize = size / 2.5;
+                    drawPattern(x - size/2, y - size/2, newSize, depth - 1);
+                    drawPattern(x + size/2, y - size/2, newSize, depth - 1);
+                    drawPattern(x - size/2, y + size/2, newSize, depth - 1);
+                    drawPattern(x + size/2, y + size/2, newSize, depth - 1);
+                }
                 
+                drawPattern(0, 0, 200, 7);
                 ctx.restore();
                 
-                requestAnimationFrame(draw);
+                requestAnimationFrame(drawSimpleFractal);
             }
             
             // Обработка касаний
@@ -159,7 +87,6 @@
                 e.preventDefault();
                 
                 if (e.touches.length === 1 && isDragging) {
-                    // Перемещение
                     const touchX = e.touches[0].clientX;
                     const touchY = e.touches[0].clientY;
                     
@@ -169,7 +96,6 @@
                     lastX = touchX;
                     lastY = touchY;
                 } else if (e.touches.length === 2) {
-                    // Масштабирование
                     const touch1 = e.touches[0];
                     const touch2 = e.touches[1];
                     
@@ -179,26 +105,4 @@
                     );
                     
                     if (lastDistance !== undefined) {
-                        const zoomFactor = distance / lastDistance;
-                        scale *= zoomFactor;
-                        scale = Math.max(0.1, Math.min(10, scale));
-                    }
-                    
-                    lastDistance = distance;
-                }
-            });
-            
-            canvas.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                isDragging = false;
-                lastDistance = undefined;
-            });
-            
-            let lastDistance;
-            
-            // Запуск отрисовки
-            draw();
-        });
-    </script>
-</body>
-</html>
+                        const zoomFactor = distance /
