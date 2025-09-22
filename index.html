@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Живые частицы</title>
+    <title>Умные частицы с физикой</title>
     <style>
         body {
             margin: 0;
@@ -17,27 +17,72 @@
         canvas {
             display: block;
         }
-        .info {
+        .controls {
             position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
+            top: 10px;
+            left: 10px;
             color: white;
-            font-size: 16px;
+            font-size: 14px;
             pointer-events: none;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .slider-container {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .slider {
+            width: 120px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 5px;
+        }
+        .slider-label {
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
-    <div class="info">Касайтесь экрана для создания волн</div>
+    <div class="controls">
+        <div>Касайтесь экрана чтобы добавить частицы</div>
+        <div>Двойное касание: очистить</div>
+        <div id="particleCount">Частиц: 0</div>
+        <div id="fps">FPS: 0</div>
+    </div>
+    
+    <div class="slider-container">
+        <div class="slider">
+            <div class="slider-label">Сила: <span id="forceValue">0.5</span></div>
+            <input type="range" id="forceSlider" min="-1" max="1" step="0.1" value="0.5">
+        </div>
+        <div class="slider">
+            <div class="slider-label">Скорость: <span id="speedValue">1</span></div>
+            <input type="range" id="speedSlider" min="0.1" max="3" step="0.1" value="1">
+        </div>
+    </div>
+
     <canvas id="canvas"></canvas>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
+            const particleCountElement = document.getElementById('particleCount');
+            const fpsElement = document.getElementById('fps');
+            const forceSlider = document.getElementById('forceSlider');
+            const speedSlider = document.getElementById('speedSlider');
+            const forceValue = document.getElementById('forceValue');
+            const speedValue = document.getElementById('speedValue');
             
             // Установка размеров canvas
             function resizeCanvas() {
@@ -47,97 +92,178 @@
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
-            // Массив частиц
-            const particles = [];
-            const maxParticles = 500; // Оптимизировано для мобильных
+            // Параметры системы
+            let particles = [];
+            let maxParticles = 150; // Оптимизировано для мобильных
+            let interactionForce = 0.5;
+            let globalSpeed = 1.0;
+            let lastTouchTime = 0;
+            let fps = 0;
+            let lastFpsUpdate = 0;
+            let frameCount = 0;
             
-            // Создание частиц
-            function createParticles() {
-                for (let i = 0; i < maxParticles; i++) {
-                    particles.push({
-                        x: Math.random() * canvas.width,
-                        y: Math.random() * canvas.height,
-                        size: Math.random() * 3 + 1,
-                        speedX: Math.random() * 2 - 1,
-                        speedY: Math.random() * 2 - 1,
-                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
-                        connections: []
-                    });
+            // Типы частиц и их свойства
+            const particleTypes = [
+                { 
+                    name: "Электроны", 
+                    color: "#ff4444", 
+                    size: 2, 
+                    charge: -1,
+                    mass: 1
+                },
+                { 
+                    name: "Протоны", 
+                    color: "#4444ff", 
+                    size: 3, 
+                    charge: 1,
+                    mass: 2
+                },
+                { 
+                    name: "Нейтроны", 
+                    color: "#44ff44", 
+                    size: 2.5, 
+                    charge: 0,
+                    mass: 1.5
+                },
+                { 
+                    name: "Фотоны", 
+                    color: "#ffff44", 
+                    size: 1.5, 
+                    charge: 0,
+                    mass: 0.5
+                }
+            ];
+            
+            let currentParticleType = 0;
+            
+            // Класс частицы
+            class Particle {
+                constructor(x, y, typeIndex) {
+                    this.x = x;
+                    this.y = y;
+                    this.typeIndex = typeIndex;
+                    this.type = particleTypes[typeIndex];
+                    this.vx = (Math.random() - 0.5) * 2;
+                    this.vy = (Math.random() - 0.5) * 2;
+                    this.size = this.type.size;
+                    this.color = this.type.color;
+                    this.mass = this.type.mass;
+                    this.charge = this.type.charge;
+                    this.age = 0;
+                    this.maxAge = 500 + Math.random() * 500;
+                }
+                
+                update() {
+                    this.age++;
+                    
+                    // Старение и исчезновение старых частиц
+                    if (this.age > this.maxAge) {
+                        this.size *= 0.98;
+                        if (this.size < 0.1) {
+                            return false; // Удалить частицу
+                        }
+                    }
+                    
+                    // Движение
+                    this.x += this.vx * globalSpeed;
+                    this.y += this.vy * globalSpeed;
+                    
+                    // Отскок от границ
+                    if (this.x < 0 || this.x > canvas.width) this.vx *= -0.9;
+                    if (this.y < 0 || this.y > canvas.height) this.vy *= -0.9;
+                    
+                    // Ограничение позиции
+                    this.x = Math.max(0, Math.min(canvas.width, this.x));
+                    this.y = Math.max(0, Math.min(canvas.height, this.y));
+                    
+                    // Сопротивление среды (трение)
+                    this.vx *= 0.995;
+                    this.vy *= 0.995;
+                    
+                    return true;
+                }
+                
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    
+                    // Свечение для старых частиц
+                    if (this.age > this.maxAge * 0.8) {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+                        ctx.fillStyle = this.color + "33";
+                        ctx.fill();
+                    }
                 }
             }
             
-            // Отрисовка соединений между частицами
-            function drawConnections() {
+            // Функция вычисления взаимодействия между частицами
+            function calculateInteractions() {
+                // Оптимизация: проверяем только близкие частицы
                 for (let i = 0; i < particles.length; i++) {
                     for (let j = i + 1; j < particles.length; j++) {
-                        const dx = particles[i].x - particles[j].x;
-                        const dy = particles[i].y - particles[j].y;
+                        const p1 = particles[i];
+                        const p2 = particles[j];
+                        
+                        const dx = p2.x - p1.x;
+                        const dy = p2.y - p1.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        // Рисуем линию, если частицы близко
-                        if (distance < 100) {
-                            const opacity = 1 - distance / 100;
-                            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.3})`;
-                            ctx.lineWidth = 1;
-                            ctx.beginPath();
-                            ctx.moveTo(particles[i].x, particles[i].y);
-                            ctx.lineTo(particles[j].x, particles[j].y);
-                            ctx.stroke();
+                        // Взаимодействуем только если частицы близко
+                        if (distance < 100 && distance > 5) {
+                            // Сила взаимодействия зависит от зарядов и расстояния
+                            const force = (p1.charge * p2.charge * interactionForce) / (distance * distance);
+                            
+                            // Нормализованное направление
+                            const nx = dx / distance;
+                            const ny = dy / distance;
+                            
+                            // Применяем силу с учетом массы
+                            const acceleration1 = force / p1.mass;
+                            const acceleration2 = force / p2.mass;
+                            
+                            p1.vx += nx * acceleration1;
+                            p1.vy += ny * acceleration1;
+                            p2.vx -= nx * acceleration2;
+                            p2.vy -= ny * acceleration2;
                         }
                     }
                 }
             }
             
-            // Отрисовка частиц
-            function drawParticles() {
-                for (const particle of particles) {
-                    ctx.beginPath();
-                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-                    ctx.fillStyle = particle.color;
-                    ctx.fill();
+            // Добавление новой частицы
+            function addParticle(x, y, typeIndex) {
+                if (particles.length >= maxParticles) {
+                    // Удаляем самую старую частицу
+                    particles.shift();
                 }
+                
+                particles.push(new Particle(x, y, typeIndex));
+                updateParticleCount();
             }
             
-            // Обновление позиций частиц
-            function updateParticles() {
-                for (const particle of particles) {
-                    // Движение частиц
-                    particle.x += particle.speedX;
-                    particle.y += particle.speedY;
-                    
-                    // Отскок от границ
-                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
-                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
-                    
-                    // Случайные изменения направления
-                    if (Math.random() < 0.02) {
-                        particle.speedX += Math.random() * 0.5 - 0.25;
-                        particle.speedY += Math.random() * 0.5 - 0.25;
-                    }
-                    
-                    // Ограничение скорости
-                    const speed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY);
-                    if (speed > 2) {
-                        particle.speedX = (particle.speedX / speed) * 2;
-                        particle.speedY = (particle.speedY / speed) * 2;
-                    }
-                }
+            // Обновление счетчика частиц
+            function updateParticleCount() {
+                particleCountElement.textContent = `Частиц: ${particles.length}/${maxParticles}`;
             }
             
-            // Создание волны при касании
-            function createWave(x, y) {
-                for (const particle of particles) {
-                    const dx = particle.x - x;
-                    const dy = particle.y - y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < 150) {
-                        const force = 5 * (1 - distance / 150);
-                        const angle = Math.atan2(dy, dx);
-                        
-                        particle.speedX += Math.cos(angle) * force;
-                        particle.speedY += Math.sin(angle) * force;
-                    }
+            // Очистка всех частиц
+            function clearParticles() {
+                particles = [];
+                updateParticleCount();
+            }
+            
+            // Обновление FPS
+            function updateFPS() {
+                frameCount++;
+                const now = performance.now();
+                if (now - lastFpsUpdate >= 1000) {
+                    fps = Math.round(frameCount * 1000 / (now - lastFpsUpdate));
+                    fpsElement.textContent = `FPS: ${fps}`;
+                    frameCount = 0;
+                    lastFpsUpdate = now;
                 }
             }
             
@@ -147,29 +273,118 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Обновление и отрисовка
-                updateParticles();
+                // Обновление FPS
+                updateFPS();
+                
+                // Расчет взаимодействий
+                calculateInteractions();
+                
+                // Обновление и отрисовка частиц
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    if (!particles[i].update()) {
+                        particles.splice(i, 1);
+                    } else {
+                        particles[i].draw();
+                    }
+                }
+                
+                // Отрисовка соединений между близкими частицами
                 drawConnections();
-                drawParticles();
                 
                 requestAnimationFrame(animate);
+            }
+            
+            // Отрисовка соединений между частицами
+            function drawConnections() {
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const p1 = particles[i];
+                        const p2 = particles[j];
+                        
+                        const dx = p2.x - p1.x;
+                        const dy = p2.y - p1.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Рисуем соединение если частицы близко
+                        if (distance < 80) {
+                            const opacity = 1 - distance / 80;
+                            
+                            // Цвет соединения зависит от типов частиц
+                            let connectionColor;
+                            if (p1.charge * p2.charge > 0) {
+                                connectionColor = `rgba(255, 100, 100, ${opacity * 0.3})`; // Отталкивание
+                            } else if (p1.charge * p2.charge < 0) {
+                                connectionColor = `rgba(100, 100, 255, ${opacity * 0.3})`; // Притяжение
+                            } else {
+                                connectionColor = `rgba(200, 200, 200, ${opacity * 0.2})`; // Нейтральное
+                            }
+                            
+                            ctx.strokeStyle = connectionColor;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(p1.x, p1.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
             }
             
             // Обработка касаний
             canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault();
                 const touch = e.touches[0];
-                createWave(touch.clientX, touch.clientY);
+                const currentTime = new Date().getTime();
+                
+                // Двойное касание - очистка
+                if (currentTime - lastTouchTime < 300) {
+                    clearParticles();
+                } else {
+                    // Добавление частицы
+                    addParticle(touch.clientX, touch.clientY, currentParticleType);
+                    
+                    // Смена типа частицы для следующего касания
+                    currentParticleType = (currentParticleType + 1) % particleTypes.length;
+                }
+                
+                lastTouchTime = currentTime;
             });
             
             canvas.addEventListener('touchmove', function(e) {
                 e.preventDefault();
-                const touch = e.touches[0];
-                createWave(touch.clientX, touch.clientY);
+                // Добавляем частицы при движении пальца
+                for (let i = 0; i < e.touches.length; i++) {
+                    const touch = e.touches[i];
+                    if (Math.random() < 0.3) { // Не добавляем на каждом кадре для производительности
+                        addParticle(touch.clientX, touch.clientY, currentParticleType);
+                    }
+                }
             });
             
-            // Инициализация
-            createParticles();
+            // Обработка слайдеров
+            forceSlider.addEventListener('input', function() {
+                interactionForce = parseFloat(this.value);
+                forceValue.textContent = interactionForce.toFixed(1);
+            });
+            
+            speedSlider.addEventListener('input', function() {
+                globalSpeed = parseFloat(this.value);
+                speedValue.textContent = globalSpeed.toFixed(1);
+            });
+            
+            // Создание начальных частиц
+            function createInitialParticles() {
+                for (let i = 0; i < 30; i++) {
+                    addParticle(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height,
+                        Math.floor(Math.random() * particleTypes.length)
+                    );
+                }
+            }
+            
+            // Запуск
+            createInitialParticles();
             animate();
         });
     </script>
