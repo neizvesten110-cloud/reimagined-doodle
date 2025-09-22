@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Фрактал для мобильных устройств</title>
+    <title>3D Фрактал Мандельброта</title>
     <style>
         body {
             margin: 0;
@@ -12,6 +12,7 @@
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
             font-family: Arial, sans-serif;
+            background: #000;
         }
         canvas {
             display: block;
@@ -25,8 +26,9 @@
             color: white;
             font-size: 14px;
             pointer-events: none;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
             padding: 0 20px;
+            z-index: 100;
         }
         .loading {
             position: fixed;
@@ -36,6 +38,7 @@
             color: white;
             font-size: 18px;
             text-align: center;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -48,11 +51,19 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Основные переменные
             let camera, scene, renderer;
-            let fractal;
+            let fractalMesh;
             let isRotating = false;
             let previousTouchDistance = null;
             let initialTouches = [];
-            let isAnimating = true;
+            
+            // Параметры фрактала
+            const fractalParams = {
+                resolution: 28,  // Уменьшено для производительности на мобильных
+                iterations: 10,
+                scale: 2.0,
+                power: 8,
+                offset: new THREE.Vector3(0, 0, 0)
+            };
             
             // Инициализация сцены
             function init() {
@@ -66,12 +77,20 @@
                 camera.position.z = 5;
                 
                 // Создание рендерера
-                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer = new THREE.WebGLRenderer({ antialias: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Оптимизация для мобильных устройств
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 document.body.appendChild(renderer.domElement);
                 
-                // Создание 3D фрактала (упрощенная версия)
+                // Добавление освещения
+                const ambientLight = new THREE.AmbientLight(0x333333);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 0.7);
+                directionalLight.position.set(5, 5, 5);
+                scene.add(directionalLight);
+                
+                // Создание 3D фрактала
                 createFractal();
                 
                 // Обработка событий
@@ -84,46 +103,89 @@
                 animate();
             }
             
-            // Создание фрактала (упрощенная реализация)
+            // Создание 3D фрактала Мандельброта
             function createFractal() {
-                const geometry = new THREE.SphereGeometry(1, 64, 64);
+                // Создание геометрии для точек фрактала
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
                 
-                // Создание шейдерного материала для фрактального эффекта
-                const material = new THREE.ShaderMaterial({
-                    uniforms: {
-                        time: { value: 1.0 }
-                    },
-                    vertexShader: `
-                        varying vec2 vUv;
-                        void main() {
-                            vUv = uv;
-                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                        }
-                    `,
-                    fragmentShader: `
-                        uniform float time;
-                        varying vec2 vUv;
-                        
-                        // Упрощенный фрактальный паттерн
-                        void main() {
-                            vec2 center = vec2(0.5, 0.5);
-                            float dist = distance(vUv, center);
-                            float fractal = sin(dist * 20.0 + time) * 0.5 + 0.5;
+                // Генерация точек фрактала
+                const size = fractalParams.resolution;
+                const halfSize = size / 2;
+                
+                for (let x = 0; x < size; x++) {
+                    for (let y = 0; y < size; y++) {
+                        for (let z = 0; z < size; z++) {
+                            // Нормализованные координаты
+                            const nx = (x - halfSize) / halfSize;
+                            const ny = (y - halfSize) / halfSize;
+                            const nz = (z - halfSize) / halfSize;
                             
-                            // Цветовая схема с градиентом
-                            vec3 color = mix(
-                                vec3(0.1, 0.3, 0.8), 
-                                vec3(0.8, 0.2, 0.1), 
-                                fractal
-                            );
+                            // Вычисление фрактала
+                            const value = mandelbulb(nx, ny, nz, fractalParams);
                             
-                            gl_FragColor = vec4(color, 1.0);
+                            if (value > 0.5) { // Пороговое значение для визуализации
+                                positions.push(nx * fractalParams.scale, ny * fractalParams.scale, nz * fractalParams.scale);
+                                
+                                // Цвет на основе позиции
+                                colors.push(
+                                    (x / size) * 0.5 + 0.5,
+                                    (y / size) * 0.3 + 0.5,
+                                    (z / size) * 0.8 + 0.2
+                                );
+                            }
                         }
-                    `
+                    }
+                }
+                
+                // Установка атрибутов геометрии
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                
+                // Материал для точек
+                const material = new THREE.PointsMaterial({
+                    size: 0.05,
+                    vertexColors: true,
+                    sizeAttenuation: true
                 });
                 
-                fractal = new THREE.Mesh(geometry, material);
-                scene.add(fractal);
+                // Создание mesh
+                fractalMesh = new THREE.Points(geometry, material);
+                scene.add(fractalMesh);
+            }
+            
+            // Функция для вычисления 3D фрактала Мандельброта (Mandelbulb)
+            function mandelbulb(x, y, z, params) {
+                let zx = x;
+                let zy = y;
+                let zz = z;
+                
+                let dr = 1.0;
+                let r = 0.0;
+                
+                for (let i = 0; i < params.iterations; i++) {
+                    r = Math.sqrt(zx * zx + zy * zy + zz * zz);
+                    if (r > 2) break;
+                    
+                    // Конвертация в сферические координаты
+                    const theta = Math.acos(zz / r);
+                    const phi = Math.atan2(zy, zx);
+                    
+                    dr = Math.pow(r, params.power - 1.0) * params.power * dr + 1.0;
+                    
+                    // Возведение в степень и поворот
+                    const zr = Math.pow(r, params.power);
+                    theta = theta * params.power;
+                    phi = phi * params.power;
+                    
+                    // Конвертация обратно в декартовы координаты
+                    zx = zr * Math.sin(theta) * Math.cos(phi) + x;
+                    zy = zr * Math.sin(theta) * Math.sin(phi) + y;
+                    zz = zr * Math.cos(theta) + z;
+                }
+                
+                return 0.5 * Math.log(r) * r / dr;
             }
             
             // Настройка обработчиков событий
@@ -169,8 +231,8 @@
                     const movementX = touchX - initialTouches[0].x;
                     const movementY = touchY - initialTouches[0].y;
                     
-                    fractal.rotation.y += movementX * 0.01;
-                    fractal.rotation.x += movementY * 0.01;
+                    fractalMesh.rotation.y += movementX * 0.01;
+                    fractalMesh.rotation.x += movementY * 0.01;
                     
                     initialTouches[0] = { x: touchX, y: touchY };
                 } else if (event.touches.length === 2) {
@@ -210,11 +272,8 @@
             function animate() {
                 requestAnimationFrame(animate);
                 
-                // Анимация фрактала
-                if (isAnimating && fractal) {
-                    fractal.material.uniforms.time.value += 0.05;
-                    fractal.rotation.y += 0.003;
-                }
+                // Медленное автоматическое вращение
+                fractalMesh.rotation.y += 0.003;
                 
                 renderer.render(scene, camera);
             }
