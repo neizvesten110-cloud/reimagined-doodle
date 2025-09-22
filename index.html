@@ -1,93 +1,227 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Бложек</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Фрактал для мобильных устройств</title>
     <style>
-        body { font-family: Arial; background: #000; color: #fff; padding: 20px; }
-        .post { background: #222; padding: 20px; margin-bottom: 20px; border-radius: 10px; }
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            padding: 0 20px;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <h1>Бложек</h1>
-    <div id="posts"></div>
+    <div class="loading">Загрузка 3D фрактала...</div>
+    <div class="controls">Свайп для перемещения · Два пальца для масштабирования</div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // ТВОЙ API-КЛЮЧ. ВСТАВЬ ЕГО СЮДА!
-        const API_KEY = 'sk-8daac13a153749d2a23850b4b942f6db';
-        const API_URL = 'https://api.deepseek.com/v1/chat/completions';
-
-        // Твои нейрособеседники
-        const AI_AGENTS = [
-            { name: "Вася", personality: "Грубоватый, но справедливый. Любит мат и прямолинейные высказывания." },
-            { name: "Димон", personality: "Весельчак, любит мемы и абсурдные ситуации." }
-        ];
-
-        // Главная функция: получить диалог
-        async function generateShit() {
-            try {
-                // 1. Генерируем тему
-                const topicResponse = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: [
-                            { role: 'user', content: 'Придумай короткую и ёмкую тему для спора двух русских мужиков. Только тему, без объяснений.' }
-                        ],
-                        max_tokens: 50
-                    })
-                });
-                const topicData = await topicResponse.json();
-                let topic = topicData.choices[0].message.content.trim();
-
-                // 2. Генерируем сам диалог
-                const dialogueResponse = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: [
-                            { 
-                                role: 'user', 
-                                content: `Напиши диалог между ${AI_AGENTS[0].name} и ${AI_AGENTS[1].name} на тему: "${topic}". 
-                                ${AI_AGENTS[0].name}: ${AI_AGENTS[0].personality}
-                                ${AI_AGENTS[1].name}: ${AI_AGENTS[1].personality}
-                                Диалог должен быть живым, с матом (зацензуренным звездочками) и юмором.`
-                            }
-                        ],
-                        max_tokens: 500
-                    })
-                });
-                const dialogueData = await dialogueResponse.json();
-                const dialogue = dialogueData.choices[0].message.content;
-
-                // 3. Показываем результат на странице
-                const postsDiv = document.getElementById('posts');
-                postsDiv.innerHTML = `
-                    <div class="post">
-                        <h3>${topic}</h3>
-                        <p>${dialogue.replace(/\n/g, '<br>')}</p>
-                    </div>
-                `;
-
-            } catch (error) {
-                // Если всё сломалось, покажем хоть что-то
-                document.getElementById('posts').innerHTML = `
-                    <div class="post">
-                        <p>Бля, всё сломалось. API опять не отвечает. Попробуй обновить страницу.</p>
-                    </div>
-                `;
+        document.addEventListener('DOMContentLoaded', function() {
+            // Основные переменные
+            let camera, scene, renderer;
+            let fractal;
+            let isRotating = false;
+            let previousTouchDistance = null;
+            let initialTouches = [];
+            let isAnimating = true;
+            
+            // Инициализация сцены
+            function init() {
+                // Создание сцены
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x000000);
+                
+                // Создание камеры
+                const aspectRatio = window.innerWidth / window.innerHeight;
+                camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+                camera.position.z = 5;
+                
+                // Создание рендерера
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Оптимизация для мобильных устройств
+                document.body.appendChild(renderer.domElement);
+                
+                // Создание 3D фрактала (упрощенная версия)
+                createFractal();
+                
+                // Обработка событий
+                setupEventListeners();
+                
+                // Скрытие сообщения о загрузке
+                document.querySelector('.loading').style.display = 'none';
+                
+                // Запуск анимации
+                animate();
             }
-        }
-
-        // Просто вызываем функцию, когда страница грузится
-        generateShit();
+            
+            // Создание фрактала (упрощенная реализация)
+            function createFractal() {
+                const geometry = new THREE.SphereGeometry(1, 64, 64);
+                
+                // Создание шейдерного материала для фрактального эффекта
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 1.0 }
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        varying vec2 vUv;
+                        
+                        // Упрощенный фрактальный паттерн
+                        void main() {
+                            vec2 center = vec2(0.5, 0.5);
+                            float dist = distance(vUv, center);
+                            float fractal = sin(dist * 20.0 + time) * 0.5 + 0.5;
+                            
+                            // Цветовая схема с градиентом
+                            vec3 color = mix(
+                                vec3(0.1, 0.3, 0.8), 
+                                vec3(0.8, 0.2, 0.1), 
+                                fractal
+                            );
+                            
+                            gl_FragColor = vec4(color, 1.0);
+                        }
+                    `
+                });
+                
+                fractal = new THREE.Mesh(geometry, material);
+                scene.add(fractal);
+            }
+            
+            // Настройка обработчиков событий
+            function setupEventListeners() {
+                // Обработка одинарных касаний (перетаскивание)
+                renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
+                renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: false });
+                renderer.domElement.addEventListener('touchend', onTouchEnd, { passive: false });
+                
+                // Обработка изменения размера окна
+                window.addEventListener('resize', onWindowResize, false);
+            }
+            
+            // Обработка начала касания
+            function onTouchStart(event) {
+                event.preventDefault();
+                
+                if (event.touches.length === 1) {
+                    isRotating = true;
+                    initialTouches = [{
+                        x: event.touches[0].clientX,
+                        y: event.touches[0].clientY
+                    }];
+                } else if (event.touches.length === 2) {
+                    isRotating = false;
+                    // Расчет начального расстояния между двумя пальцами
+                    previousTouchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                }
+            }
+            
+            // Обработка перемещения пальцев
+            function onTouchMove(event) {
+                event.preventDefault();
+                
+                if (event.touches.length === 1 && isRotating) {
+                    // Вращение фрактала
+                    const touchX = event.touches[0].clientX;
+                    const touchY = event.touches[0].clientY;
+                    
+                    const movementX = touchX - initialTouches[0].x;
+                    const movementY = touchY - initialTouches[0].y;
+                    
+                    fractal.rotation.y += movementX * 0.01;
+                    fractal.rotation.x += movementY * 0.01;
+                    
+                    initialTouches[0] = { x: touchX, y: touchY };
+                } else if (event.touches.length === 2) {
+                    // Масштабирование фрактала
+                    const touchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                    
+                    if (previousTouchDistance !== null) {
+                        const zoomFactor = touchDistance / previousTouchDistance;
+                        camera.position.z *= 1 / zoomFactor;
+                        
+                        // Ограничение масштабирования
+                        camera.position.z = Math.max(2, Math.min(20, camera.position.z));
+                    }
+                    
+                    previousTouchDistance = touchDistance;
+                }
+            }
+            
+            // Обработка завершения касания
+            function onTouchEnd(event) {
+                event.preventDefault();
+                isRotating = false;
+                previousTouchDistance = null;
+            }
+            
+            // Обработка изменения размера окна
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            // Функция анимации
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Анимация фрактала
+                if (isAnimating && fractal) {
+                    fractal.material.uniforms.time.value += 0.05;
+                    fractal.rotation.y += 0.003;
+                }
+                
+                renderer.render(scene, camera);
+            }
+            
+            // Запуск инициализации
+            init();
+        });
     </script>
 </body>
 </html>
