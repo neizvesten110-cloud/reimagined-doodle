@@ -77,13 +77,13 @@
             let previousTouchDistance = null;
             let initialTouches = [];
             
-            // Параметры фрактала
+            // Параметры фрактала - упрощенные для тестирования
             const fractalParams = {
-                resolution: 32,  // Высокое разрешение для точности
-                iterations: 12,
+                resolution: 24,  // Среднее разрешение для баланса скорости/качества
+                iterations: 8,
                 scale: 2.0,
                 power: 8,
-                threshold: 0.5
+                threshold: 2.0  // Изменен порог для лучшего отображения
             };
             
             // Элементы прогресса
@@ -96,12 +96,12 @@
             function init() {
                 // Создание сцены
                 scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x000000);
+                scene.background = new THREE.Color(0x001122); // Темно-синий фон вместо черного
                 
                 // Создание камеры
                 const aspectRatio = window.innerWidth / window.innerHeight;
-                camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
-                camera.position.z = 5;
+                camera = new THREE.PerspectiveCamera(60, aspectRatio, 0.1, 1000);
+                camera.position.set(0, 0, 5);
                 
                 // Создание рендерера
                 renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -110,21 +110,40 @@
                 document.body.appendChild(renderer.domElement);
                 
                 // Добавление освещения
-                const ambientLight = new THREE.AmbientLight(0x333333);
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
                 scene.add(ambientLight);
                 
-                const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 0.7);
-                directionalLight.position.set(5, 5, 5);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 10);
                 scene.add(directionalLight);
                 
-                // Создание 3D фрактала в фоновом режиме с прогрессом
-                createFractalWithProgress();
+                // Создание простого тестового объекта для проверки
+                createTestObject();
                 
                 // Обработка событий
                 setupEventListeners();
                 
                 // Запуск анимации
                 animate();
+                
+                // Начинаем генерацию фрактала после небольшой задержки
+                setTimeout(createFractalWithProgress, 100);
+            }
+            
+            // Создание тестового объекта для проверки отображения
+            function createTestObject() {
+                const geometry = new THREE.SphereGeometry(1, 16, 16);
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: 0xff0000,
+                    wireframe: true 
+                });
+                const testSphere = new THREE.Mesh(geometry, material);
+                scene.add(testSphere);
+                
+                // Удалим его через 2 секунды
+                setTimeout(() => {
+                    scene.remove(testSphere);
+                }, 2000);
             }
             
             // Создание 3D фрактала с индикатором прогресса
@@ -140,31 +159,34 @@
                 
                 // Вычисление общего количества точек
                 totalPoints = size * size * size;
+                processedPoints = 0;
                 
                 // Создание фрактала по частям с помощью requestAnimationFrame
                 let x = 0, y = 0, z = 0;
                 
                 function generateNextBatch() {
-                    const batchSize = 1000; // Количество точек за один кадр
+                    const batchSize = 500; // Количество точек за один кадр
                     let pointsGenerated = 0;
                     
                     while (pointsGenerated < batchSize && z < size) {
                         // Нормализованные координаты
-                        const nx = (x - halfSize) / halfSize;
-                        const ny = (y - halfSize) / halfSize;
-                        const nz = (z - halfSize) / halfSize;
+                        const nx = (x - halfSize) / halfSize * fractalParams.scale;
+                        const ny = (y - halfSize) / halfSize * fractalParams.scale;
+                        const nz = (z - halfSize) / halfSize * fractalParams.scale;
                         
                         // Вычисление фрактала
                         const value = mandelbulb(nx, ny, nz, fractalParams);
                         
-                        if (value > fractalParams.threshold) {
-                            positions.push(nx * fractalParams.scale, ny * fractalParams.scale, nz * fractalParams.scale);
+                        // Упрощенное условие для отображения точек
+                        if (value < fractalParams.threshold && value > 0) {
+                            positions.push(nx, ny, nz);
                             
-                            // Цвет на основе позиции
+                            // Цвет на основе значения фрактала
+                            const colorIntensity = Math.min(1, value / fractalParams.threshold);
                             colors.push(
-                                (x / size) * 0.5 + 0.5,
-                                (y / size) * 0.3 + 0.5,
-                                (z / size) * 0.8 + 0.2
+                                colorIntensity * 0.8 + 0.2,
+                                colorIntensity * 0.5 + 0.3,
+                                colorIntensity * 0.3 + 0.7
                             );
                         }
                         
@@ -203,15 +225,23 @@
             
             // Завершение генерации фрактала
             function finishFractalGeneration(geometry, positions, colors) {
+                if (positions.length === 0) {
+                    // Если точек нет, создаем простой фрактал
+                    createSimpleFractal();
+                    return;
+                }
+                
                 // Установка атрибутов геометрии
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                 geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                 
                 // Материал для точек
                 const material = new THREE.PointsMaterial({
-                    size: 0.03,
+                    size: 0.05,
                     vertexColors: true,
-                    sizeAttenuation: true
+                    sizeAttenuation: true,
+                    transparent: true,
+                    opacity: 0.8
                 });
                 
                 // Создание mesh
@@ -219,40 +249,81 @@
                 scene.add(fractalMesh);
                 
                 // Скрытие сообщения о загрузке
+                setTimeout(() => {
+                    document.querySelector('.loading').style.display = 'none';
+                }, 500);
+            }
+            
+            // Создание простого фрактала если основной не сработал
+            function createSimpleFractal() {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                
+                // Создаем простой фрактальный узор
+                const size = 20;
+                for (let x = 0; x < size; x++) {
+                    for (let y = 0; y < size; y++) {
+                        for (let z = 0; z < size; z++) {
+                            const nx = (x - size/2) / 5;
+                            const ny = (y - size/2) / 5;
+                            const nz = (z - size/2) / 5;
+                            
+                            // Простой фрактальный паттерн
+                            const r = Math.sqrt(nx*nx + ny*ny + nz*nz);
+                            const value = Math.sin(r * 10) * Math.cos(nx * 5) * Math.sin(ny * 5);
+                            
+                            if (Math.abs(value) > 0.3) {
+                                positions.push(nx, ny, nz);
+                                colors.push(
+                                    (x / size) * 0.8 + 0.2,
+                                    (y / size) * 0.5 + 0.3,
+                                    (z / size) * 0.7 + 0.3
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.05,
+                    vertexColors: true,
+                    sizeAttenuation: true
+                });
+                
+                fractalMesh = new THREE.Points(geometry, material);
+                scene.add(fractalMesh);
+                
                 document.querySelector('.loading').style.display = 'none';
             }
             
-            // Функция для вычисления 3D фрактала Мандельброта (Mandelbulb)
+            // Упрощенная функция для вычисления 3D фрактала
             function mandelbulb(x, y, z, params) {
                 let zx = x;
                 let zy = y;
                 let zz = z;
                 
-                let dr = 1.0;
-                let r = 0.0;
-                
                 for (let i = 0; i < params.iterations; i++) {
-                    r = Math.sqrt(zx * zx + zy * zy + zz * zz);
-                    if (r > 2) break;
+                    const r = Math.sqrt(zx*zx + zy*zy + zz*zz);
+                    if (r > 2) return i / params.iterations;
                     
-                    // Конвертация в сферические координаты
-                    let theta = Math.acos(zz / r);
-                    let phi = Math.atan2(zy, zx);
+                    // Простое преобразование
+                    const theta = Math.atan2(Math.sqrt(zx*zx + zy*zy), zz);
+                    const phi = Math.atan2(zy, zx);
                     
-                    dr = Math.pow(r, params.power - 1.0) * params.power * dr + 1.0;
-                    
-                    // Возведение в степень и поворот
                     const zr = Math.pow(r, params.power);
-                    theta = theta * params.power;
-                    phi = phi * params.power;
+                    const newTheta = theta * params.power;
+                    const newPhi = phi * params.power;
                     
-                    // Конвертация обратно в декартовы координаты
-                    zx = zr * Math.sin(theta) * Math.cos(phi) + x;
-                    zy = zr * Math.sin(theta) * Math.sin(phi) + y;
-                    zz = zr * Math.cos(theta) + z;
+                    zx = zr * Math.sin(newTheta) * Math.cos(newPhi) + x;
+                    zy = zr * Math.sin(newTheta) * Math.sin(newPhi) + y;
+                    zz = zr * Math.cos(newTheta) + z;
                 }
                 
-                return 0.5 * Math.log(r) * r / dr;
+                return 0;
             }
             
             // Настройка обработчиков событий
@@ -305,7 +376,7 @@
                     
                     initialTouches[0] = { x: touchX, y: touchY };
                 } else if (event.touches.length === 2) {
-                    // Масштабирование фрактала
+                    // Масштабирование
                     const touchDistance = Math.hypot(
                         event.touches[0].clientX - event.touches[1].clientX,
                         event.touches[0].clientY - event.touches[1].clientY
@@ -314,8 +385,6 @@
                     if (previousTouchDistance !== null) {
                         const zoomFactor = touchDistance / previousTouchDistance;
                         camera.position.z *= 1 / zoomFactor;
-                        
-                        // Ограничение масштабирования
                         camera.position.z = Math.max(2, Math.min(20, camera.position.z));
                     }
                     
@@ -343,7 +412,7 @@
                 
                 // Медленное автоматическое вращение
                 if (fractalMesh) {
-                    fractalMesh.rotation.y += 0.003;
+                    fractalMesh.rotation.y += 0.002;
                 }
                 
                 renderer.render(scene, camera);
