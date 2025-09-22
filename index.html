@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Фрактал для мобильных</title>
+    <title>Бесконечный 2D Фрактал</title>
     <style>
         body {
             margin: 0;
@@ -33,222 +33,171 @@
     </style>
 </head>
 <body>
-    <div class="controls">Свайп для вращения · Два пальца для масштабирования</div>
+    <div class="controls">Свайп для перемещения · Два пальца для масштабирования</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            let camera, scene, renderer;
-            let fractal;
-            let isRotating = false;
-            let previousTouchDistance = null;
-            let initialTouches = [];
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            document.body.appendChild(canvas);
             
-            // Инициализация сцены
-            function init() {
-                // Создание сцены
-                scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x000011);
+            // Установка размеров canvas
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Параметры фрактала
+            let scale = 1;
+            let offsetX = 0;
+            let offsetY = 0;
+            let isDragging = false;
+            let lastX, lastY;
+            
+            // Простой бесконечный фрактал - треугольник Серпинского
+            function drawSierpinski(x, y, size, depth) {
+                if (depth === 0) return;
                 
-                // Создание камеры
-                const aspectRatio = window.innerWidth / window.innerHeight;
-                camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
-                camera.position.z = 10;
+                // Рисуем треугольник
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + size, y);
+                ctx.lineTo(x + size / 2, y + size * Math.sqrt(3) / 2);
+                ctx.closePath();
                 
-                // Создание рендерера
-                renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-                document.body.appendChild(renderer.domElement);
+                // Цвет в зависимости от глубины
+                const hue = (depth * 30) % 360;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
                 
-                // Добавление освещения
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-                scene.add(ambientLight);
-                
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(5, 5, 5);
-                scene.add(directionalLight);
-                
-                // Создание простого но красивого фрактала
-                createSimpleFractal();
-                
-                // Обработка событий
-                setupEventListeners();
-                
-                // Запуск анимации
-                animate();
+                // Рекурсивно рисуем меньшие треугольники
+                const newSize = size / 2;
+                drawSierpinski(x, y, newSize, depth - 1);
+                drawSierpinski(x + newSize, y, newSize, depth - 1);
+                drawSierpinski(x + newSize / 2, y + newSize * Math.sqrt(3) / 2, newSize, depth - 1);
             }
             
-            // Создание простого фрактала на основе геометрии
-            function createSimpleFractal() {
-                // Создаем группу для фрактала
-                fractal = new THREE.Group();
-                scene.add(fractal);
+            // Альтернатива: бесконечный квадратный фрактал
+            function drawSquareFractal(x, y, size, depth) {
+                if (depth <= 0) return;
                 
-                // Параметры фрактала
-                const size = 1;
-                const iterations = 4; // Уровень детализации
-                const scaleFactor = 0.5; // Коэффициент масштабирования
+                // Рисуем квадрат
+                ctx.fillStyle = `hsl(${depth * 20 % 360}, 80%, ${50 - depth * 3}%)`;
+                ctx.fillRect(x, y, size, size);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, size, size);
                 
-                // Рекурсивная функция для создания фрактала
-                function createLevel(level, parent, scale) {
-                    if (level <= 0) return;
-                    
-                    // Количество объектов на текущем уровне
-                    const count = 8;
-                    
-                    for (let i = 0; i < count; i++) {
-                        // Создаем геометрию в зависимости от уровня
-                        let geometry;
-                        if (level === iterations) {
-                            geometry = new THREE.OctahedronGeometry(scale, 0);
-                        } else if (level === iterations - 1) {
-                            geometry = new THREE.DodecahedronGeometry(scale * 0.8, 0);
-                        } else {
-                            geometry = new THREE.IcosahedronGeometry(scale * 0.6, 0);
-                        }
-                        
-                        // Материал с разными цветами для уровней
-                        const material = new THREE.MeshPhongMaterial({
-                            color: new THREE.Color().setHSL(
-                                i / count, 
-                                0.8, 
-                                0.5 + level * 0.1
-                            ),
-                            transparent: true,
-                            opacity: 0.8,
-                            wireframe: level < 3 // Проволочный режим для внутренних уровней
-                        });
-                        
-                        const mesh = new THREE.Mesh(geometry, material);
-                        
-                        // Позиционируем объекты по кругу
-                        const angle = (i / count) * Math.PI * 2;
-                        const radius = scale * 2;
-                        mesh.position.x = Math.cos(angle) * radius;
-                        mesh.position.y = Math.sin(angle) * radius;
-                        mesh.position.z = (iterations - level) * 0.5;
-                        
-                        // Добавляем вращение
-                        mesh.rotation.x = Math.random() * Math.PI;
-                        mesh.rotation.y = Math.random() * Math.PI;
-                        
-                        parent.add(mesh);
-                        
-                        // Рекурсивно создаем следующий уровень
-                        createLevel(level - 1, mesh, scale * scaleFactor);
-                    }
-                }
-                
-                // Запускаем создание фрактала
-                createLevel(iterations, fractal, size);
+                // Рекурсивно рисуем меньшие квадраты в углах
+                const newSize = size / 3;
+                drawSquareFractal(x, y, newSize, depth - 1);
+                drawSquareFractal(x + size - newSize, y, newSize, depth - 1);
+                drawSquareFractal(x, y + size - newSize, newSize, depth - 1);
+                drawSquareFractal(x + size - newSize, y + size - newSize, newSize, depth - 1);
             }
             
-            // Настройка обработчиков событий
-            function setupEventListeners() {
-                // Обработка одинарных касаний (перетаскивание)
-                renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
-                renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: false });
-                renderer.domElement.addEventListener('touchend', onTouchEnd, { passive: false });
+            // Еще более простой фрактал - круги в кругах
+            function drawCircleFractal(x, y, radius, depth) {
+                if (depth <= 0) return;
                 
-                // Обработка изменения размера окна
-                window.addEventListener('resize', onWindowResize, false);
-            }
-            
-            // Обработка начала касания
-            function onTouchStart(event) {
-                event.preventDefault();
+                // Рисуем круг
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${depth * 45 % 360}, 80%, 60%)`;
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
                 
-                if (event.touches.length === 1) {
-                    isRotating = true;
-                    initialTouches = [{
-                        x: event.touches[0].clientX,
-                        y: event.touches[0].clientY
-                    }];
-                } else if (event.touches.length === 2) {
-                    isRotating = false;
-                    // Расчет начального расстояния между двумя пальцами
-                    previousTouchDistance = Math.hypot(
-                        event.touches[0].clientX - event.touches[1].clientX,
-                        event.touches[0].clientY - event.touches[1].clientY
-                    );
+                // Рекурсивно рисуем меньшие круги
+                const newRadius = radius / 2;
+                if (newRadius > 1) {
+                    drawCircleFractal(x - radius/2, y, newRadius, depth - 1);
+                    drawCircleFractal(x + radius/2, y, newRadius, depth - 1);
+                    drawCircleFractal(x, y - radius/2, newRadius, depth - 1);
+                    drawCircleFractal(x, y + radius/2, newRadius, depth - 1);
                 }
             }
             
-            // Обработка перемещения пальцев
-            function onTouchMove(event) {
-                event.preventDefault();
+            // Функция отрисовки
+            function draw() {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                if (event.touches.length === 1 && isRotating) {
-                    // Вращение фрактала
-                    const touchX = event.touches[0].clientX;
-                    const touchY = event.touches[0].clientY;
+                // Центрируем и масштабируем
+                ctx.save();
+                ctx.translate(canvas.width/2 + offsetX, canvas.height/2 + offsetY);
+                ctx.scale(scale, scale);
+                
+                // Рисуем фрактал (можно менять на другие функции)
+                const baseSize = 200;
+                drawSierpinski(-baseSize/2, -baseSize/2, baseSize, 6);
+                // drawSquareFractal(-baseSize/2, -baseSize/2, baseSize, 5);
+                // drawCircleFractal(0, 0, baseSize/2, 6);
+                
+                ctx.restore();
+                
+                requestAnimationFrame(draw);
+            }
+            
+            // Обработка касаний
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    lastX = e.touches[0].clientX;
+                    lastY = e.touches[0].clientY;
+                }
+            });
+            
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                
+                if (e.touches.length === 1 && isDragging) {
+                    // Перемещение
+                    const touchX = e.touches[0].clientX;
+                    const touchY = e.touches[0].clientY;
                     
-                    const movementX = touchX - initialTouches[0].x;
-                    const movementY = touchY - initialTouches[0].y;
+                    offsetX += (touchX - lastX) / scale;
+                    offsetY += (touchY - lastY) / scale;
                     
-                    fractal.rotation.y += movementX * 0.01;
-                    fractal.rotation.x += movementY * 0.01;
-                    
-                    initialTouches[0] = { x: touchX, y: touchY };
-                } else if (event.touches.length === 2) {
+                    lastX = touchX;
+                    lastY = touchY;
+                } else if (e.touches.length === 2) {
                     // Масштабирование
-                    const touchDistance = Math.hypot(
-                        event.touches[0].clientX - event.touches[1].clientX,
-                        event.touches[0].clientY - event.touches[1].clientY
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    
+                    const distance = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
                     );
                     
-                    if (previousTouchDistance !== null) {
-                        const zoomFactor = touchDistance / previousTouchDistance;
-                        camera.position.z *= 1 / zoomFactor;
-                        camera.position.z = Math.max(5, Math.min(50, camera.position.z));
+                    if (lastDistance !== undefined) {
+                        const zoomFactor = distance / lastDistance;
+                        scale *= zoomFactor;
+                        scale = Math.max(0.1, Math.min(10, scale));
                     }
                     
-                    previousTouchDistance = touchDistance;
+                    lastDistance = distance;
                 }
-            }
+            });
             
-            // Обработка завершения касания
-            function onTouchEnd(event) {
-                event.preventDefault();
-                isRotating = false;
-                previousTouchDistance = null;
-            }
+            canvas.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                isDragging = false;
+                lastDistance = undefined;
+            });
             
-            // Обработка изменения размера окна
-            function onWindowResize() {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
+            let lastDistance;
             
-            // Функция анимации
-            function animate() {
-                requestAnimationFrame(animate);
-                
-                // Медленное автоматическое вращение, если пользователь не взаимодействует
-                if (!isRotating) {
-                    fractal.rotation.y += 0.002;
-                    fractal.rotation.x += 0.001;
-                }
-                
-                // Пульсация масштаба для внутренних элементов
-                const time = Date.now() * 0.001;
-                fractal.children.forEach((child, index) => {
-                    if (child.children && child.children.length > 0) {
-                        child.children.forEach(grandchild => {
-                            grandchild.scale.x = 1 + Math.sin(time + index) * 0.1;
-                            grandchild.scale.y = 1 + Math.sin(time + index) * 0.1;
-                            grandchild.scale.z = 1 + Math.sin(time + index) * 0.1;
-                        });
-                    }
-                });
-                
-                renderer.render(scene, camera);
-            }
-            
-            // Запуск инициализации
-            init();
+            // Запуск отрисовки
+            draw();
         });
     </script>
 </body>
